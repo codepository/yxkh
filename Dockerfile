@@ -1,5 +1,5 @@
 FROM scratch
-ADD /workdiary //
+ADD /yxkh //
 ADD /config.json //
 EXPOSE 8080
-ENTRYPOINT [ "/workdiary" ]
+ENTRYPOINT [ "/yxkh" ]

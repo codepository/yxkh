@@ -14,15 +14,18 @@ type Configuration struct {
 	ReadTimeout  string
 	WriteTimeout string
 	// 数据库设置
-	DbLogMode      string
-	DbType         string
-	DbName         string
-	DbHost         string
-	DbPort         string
-	DbUser         string
-	DbPassword     string
+	DbLogMode  string
+	DbType     string
+	DbName     string
+	DbHost     string
+	DbPort     string
+	DbUser     string
+	DbPassword string
+
 	DbMaxIdleConns string
 	DbMaxOpenConns string
+	// 用户模块API接口
+	UserAPIURL string
 	// redis 设置
 	RedisCluster  string
 	RedisHost     string

@@ -11,6 +11,9 @@ import (
 	"github.com/mumushuiding/util"
 )
 
+// CumulativeRanking 累计排行
+var CumulativeRanking = "加减分累计排行"
+
 // MarkReceiver MarkReceiver
 type MarkReceiver struct {
 	MarkID      int    `json:"markId"`
@@ -25,6 +28,7 @@ type MarkReceiver struct {
 	Checked     string `json:"checked"`
 	PageIndex   int    `json:"pageIndex"`
 	PageSize    int    `json:"pageSize"`
+	Refresh     bool   `json:"refresh"`
 }
 
 // RankConfig 排名设置
@@ -124,10 +128,26 @@ type userLabelWithGroup struct {
 	userLabelName  string
 	groupLabelID   int
 	groupLabelName string
+	limit          int
+}
+
+// RankRows 排名信息
+type RankRows struct {
+	Types string
+	Rows  []*model.UserMark
+	Err   error
 }
 
 // FindUserMarkRank 加减分排行
-func FindUserMarkRank(startDate string, endDate string) (string, error) {
+func FindUserMarkRank(startDate string, endDate string, redis bool) (string, error) {
+	// ------------ 从redis查询--------------
+	if redis && model.RedisOpen {
+		str, _ := model.RedisGetVal(CumulativeRanking)
+		if len(str) > 0 {
+			fmt.Println("从redis缓存查询", CumulativeRanking)
+			return str, nil
+		}
+	}
 	// ---------- 用户类型标签获取 ----------
 	var userLables []*model.Label
 	// 从rank.json读取用户职级
@@ -158,26 +178,53 @@ func FindUserMarkRank(startDate string, endDate string) (string, error) {
 	inChannel := make(chan *userLabelWithGroup, total)
 	for _, u := range userLables {
 		for _, g := range groupLabels {
+			limit := 5 // 默认显示条数
+			if u.Name == "普通员工" {
+				limit = 10
+			}
 			ug := &userLabelWithGroup{
 				userLabelType:  u.Type,
 				userLabelName:  u.Name + "%",
 				groupLabelID:   g.ID,
 				groupLabelName: g.Name,
+				limit:          limit,
 			}
 			inChannel <- ug
 		}
 	}
+	close(inChannel)
+	resultChannel := make(chan *RankRows, total)
+	defer close(resultChannel)
 	for x := range inChannel {
 		// fmt.Printf("type:%s  name:%s  groupID: %d groupName:%s\n", x.userLabelType, x.userLabelName, x.groupLabelID, x.groupLabelName)
-		userSQL := getUserSQL(x)
-		userRankSQL := fmt.Sprintf("select r.userId,u.user_name,ifnull(round(sum(r.markNumber),2),0) as mark from res_mark r join (%s) u on u.user_id=r.userId and r.startDate>='%s' and r.endDate<='%s' group by r.userId order by mark desc", userSQL, startDate, endDate)
-		fmt.Println(userRankSQL)
-
+		go findUserMarkRank(x, startDate, endDate, resultChannel)
 	}
-	// ----------- 查询 ---------------------
-
 	// ---------- 结果合并生成json数组------------
-	return "", nil
+	var result []*RankRows
+	for i := 0; i < total; i++ {
+		// fmt.Println(<-resultChannel)
+		result = append(result, <-resultChannel)
+	}
+	jsonStr, _ := util.ToJSONStr(result)
+	// 保存结果至Redis
+	if model.RedisOpen {
+		err = model.RedisSetVal(CumulativeRanking, jsonStr, 24*time.Hour)
+		if err != nil {
+			return "", err
+		}
+	}
+	return jsonStr, nil
+}
+func findUserMarkRank(x *userLabelWithGroup, startDate, endDate string, channel chan *RankRows) {
+	userSQL := getUserSQL(x)
+	userRankSQL := fmt.Sprintf("select r.userId as user_id,u.user_name,ifnull(round(sum(r.markNumber),2),0) as mark from res_mark r join (%s) u on r.checked=1 and u.user_id=r.userId and r.startDate>='%s' and r.endDate<='%s' group by r.userId order by mark desc limit %d", userSQL, startDate, endDate, x.limit)
+	rows, _, err := model.FindUserMarkPagedWithSQL(userRankSQL, false)
+	result := &RankRows{
+		Types: fmt.Sprintf("%s-%s", x.userLabelName, x.groupLabelName),
+		Rows:  rows,
+		Err:   err,
+	}
+	channel <- result
 }
 
 // getUserSQL getUserSQL

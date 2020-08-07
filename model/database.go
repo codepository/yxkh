@@ -24,8 +24,19 @@ type Model struct {
 	CreateTime time.Time `gorm:"column:createTime" json:"createTime"`
 }
 
+// StartDB 启动数据库
+func StartDB() {
+	setup()
+}
+
+// StopDB 关闭数据库
+func StopDB() {
+	CloseDB()
+	log.Println("关闭数据库")
+}
+
 // Setup 初始化一个db连接
-func Setup() {
+func setup() {
 	var err error
 	log.Println("数据库初始化！！")
 	db, err = gorm.Open(conf.DbType, fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local", conf.DbUser, conf.DbPassword, conf.DbHost, conf.DbPort, conf.DbName))
@@ -50,7 +61,8 @@ func Setup() {
 	db.DB().SetMaxOpenConns(open)
 
 	db.Set("gorm:table_options", "ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;").
-		AutoMigrate(&ResProject{}).AutoMigrate(&ResMark{}).AutoMigrate(&Label{}).AutoMigrate(&UserLabel{})
+		AutoMigrate(&ResProject{}).AutoMigrate(&ResMark{}).AutoMigrate(&Label{}).AutoMigrate(&UserLabel{}).
+		AutoMigrate(&InfoDic{}).AutoMigrate(&Uploadfile{})
 	db.Model(&ResProject{}).ModifyColumn("startDate", "date").ModifyColumn("endDate", "date").AddIndex("projectidindex", "projectId")
 	db.Model(&ResMark{}).ModifyColumn("startDate", "date").ModifyColumn("endDate", "date").AddForeignKey("projectId", "res_project(projectId)", "CASCADE", "CASCADE")
 	db.Model(&UserLabel{}).AddIndex("labelidindex", "label_id").AddForeignKey("label_id", "label(id)", "CASCADE", "CASCADE")

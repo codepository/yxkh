@@ -6,9 +6,9 @@ import (
 
 // UserMark 用户和分数
 type UserMark struct {
-	UserID   int    `json:"userID"`
-	UserName string `json:"userName"`
-	Mark     int    `json:"mark"`
+	UserID   int     `json:"user_id"`
+	UserName string  `json:"user_name"`
+	Mark     float32 `json:"mark"`
 }
 
 // FindUserMarkPagedWithSQL 根据SQL语句查询用户总分

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/codepository/yxkh/service"
 
@@ -107,5 +108,26 @@ func UpdateMark(w http.ResponseWriter, r *http.Request) {
 
 // FindMarkRankForHome 首页加减分累计排行数据
 func FindMarkRankForHome(w http.ResponseWriter, r *http.Request) {
-	service.FindUserMarkRank("2019-01-01", "2019-09-25")
+	if r.Method != "GET" {
+		util.ResponseNo(w, "只支持GET方法")
+		return
+	}
+	r.ParseForm()
+	redis := true
+	if len(r.Form["redis"]) > 0 {
+		flag, err := strconv.ParseBool(r.Form["redis"][0])
+		if err != nil {
+			util.ResponseErr(w, err)
+			return
+		}
+		redis = flag
+	}
+	nowDate := util.FormatDate(time.Now(), util.YYYY_MM_DD)
+	firstOfYear := util.FirstDayOfCurrentYearAsString()
+	result, err := service.FindUserMarkRank(firstOfYear, nowDate, redis)
+	if err != nil {
+		util.ResponseErr(w, err)
+		return
+	}
+	fmt.Fprint(w, result)
 }

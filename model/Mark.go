@@ -11,16 +11,46 @@ import (
 
 // ResMark ResMark
 type ResMark struct {
-	MarkID      int       `gorm:"primary_key;column:markId" json:"markId"`
-	ProjectID   int       `gorm:"column:projectId" json:"projectId"`
-	MarkNumber  string    `gorm:"size:32;column:markNumber" json:"markNumber"`
-	MarkReason  string    `gorm:"size:1000;column:markReason" json:"markReason"`
-	Accordingly string    `gorm:"size:2000" json:"accordingly"`
-	StartDate   time.Time `gorm:"column:startDate" json:"startDate"`
-	EndDate     time.Time `gorm:"column:endDate" json:"endDate"`
-	CreateTime  time.Time `gorm:"column:createTime" json:"createTime"`
-	UserID      string    `gorm:"column:userId;size:32" json:"userId"`
-	Checked     string    `gorm:"size:8;column:checked" json:"checked"`
+	MarkID      int       `gorm:"primary_key;column:markId" json:"markId,omitempty"`
+	ProjectID   int       `gorm:"column:projectId" json:"projectId,omitempty"`
+	MarkNumber  string    `gorm:"size:32;column:markNumber" json:"markNumber,omitempty"`
+	MarkReason  string    `gorm:"size:1000;column:markReason" json:"markReason,omitempty"`
+	Accordingly string    `gorm:"size:2000" json:"accordingly,omitempty"`
+	StartDate   time.Time `gorm:"column:startDate" json:"startDate,omitempty"`
+	EndDate     time.Time `gorm:"column:endDate" json:"endDate,omitempty"`
+	CreateTime  time.Time `gorm:"column:createTime" json:"createTime,omitempty"`
+	UserID      string    `gorm:"column:userId;size:32" json:"userId,omitempty"`
+	Username    string    `gorm:"column:username;size:32" json:"username,omitempty"`
+	Checked     string    `gorm:"size:8;column:checked" json:"checked,omitempty"`
+}
+
+// FindAllMark FindAllMark
+func FindAllMark(rawSQL string, values ...interface{}) ([]*ResMark, error) {
+
+	var datas []*ResMark
+	err := db.Raw(rawSQL, values...).Scan(&datas).Error
+	return datas, err
+}
+
+// FindAllMarkPaged FindAllMarkPaged
+func FindAllMarkPaged(pageIndex, pageSize int, sql string) ([]*ResMark, int, error) {
+	var datas []*ResMark
+	var count int
+	if pageIndex == 0 {
+		pageIndex = 1
+	}
+	if pageSize == 0 {
+		pageSize = 10
+	}
+	err := db.Where(sql).Offset((pageIndex - 1) * pageSize).Limit(pageSize).Find(&datas).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, 0, err
+	}
+	err = db.Model(&ResMark{}).Where(sql).Count(&count).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	return datas, count, nil
 }
 
 // Save Save
@@ -54,26 +84,6 @@ func DelMarkByID(id int) error {
 	return db.Where("markId=?", id).Delete(&ResMark{}).Error
 }
 
-// FindAllMarkPaged FindAllMarkPaged
-func FindAllMarkPaged(pageIndex, pageSize int, sql string) ([]*ResMark, int, error) {
-	var datas []*ResMark
-	var count int
-	if pageIndex == 0 {
-		pageIndex = 1
-	}
-	if pageSize == 0 {
-		pageSize = 10
-	}
-	err := db.Where(sql).Offset((pageIndex - 1) * pageSize).Limit(pageSize).Find(&datas).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, 0, err
-	}
-	err = db.Model(&ResMark{}).Where(sql).Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-	return datas, count, nil
-}
 func (m *ResMark) prepareData() error {
 	if len(m.MarkNumber) == 0 || m.MarkNumber == "0" { // 评分不能为空或者0
 		return errors.New("字段【markNumber】不能为0或者空")

@@ -23,12 +23,16 @@ func crossOrigin(h http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", conf.AccessControlAllowOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", conf.AccessControlAllowMethods)
 		w.Header().Set("Access-Control-Allow-Headers", conf.AccessControlAllowHeaders)
+		r.Header.Add("Accept-Charset", "utf-8")
 		h(w, r)
 	}
 }
 func setMux() {
 	prefixV1 := "/api/v1/yxkh"
 	Mux.HandleFunc("/api/v1/yxkh/index", controller.Index)
+	Mux.HandleFunc("/api/v1/yxkh/getData", intercept(controller.GetData))
+	// ------------------ 导出数据 ------------------------
+	Mux.HandleFunc("/api/v1/yxkh/export", intercept(controller.Export))
 	// -------------------------- project ----------------
 	Mux.HandleFunc("/api/v1/yxkh/project/save", intercept(controller.SaveProject))
 	Mux.HandleFunc("/api/v1/yxkh/project/findall", intercept(controller.FindAllProject))
@@ -40,4 +44,8 @@ func setMux() {
 	Mux.HandleFunc("/api/v1/yxkh/mark/del", intercept(controller.DelMark))
 	Mux.HandleFunc("/api/v1/yxkh/mark/update", intercept(controller.UpdateMark))
 	Mux.HandleFunc(fmt.Sprintf("%s/mark/findMarkRankForHome", prefixV1), intercept(controller.FindMarkRankForHome))
+
+	// -------------------------- infodic ---------------
+	Mux.HandleFunc(fmt.Sprintf("%s/infodic/findAll", prefixV1), intercept(controller.FindAllInfoDic))
+
 }
