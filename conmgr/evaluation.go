@@ -33,9 +33,9 @@ func FindAllEvalutionRank(c *model.Container) error {
 	if len(c.Body.Fields[0]) == 0 {
 		return errors.New(errStr)
 	}
-	fields := "process.userId,process.username,process.deptName,res_evaluation.marks,publicEvaluation,leadershipEvaluation,overseerEvaluation,totalMark,result"
+	fields := "process.userId,process.username,process.deptName,res_evaluation.marks,publicEvaluation,leadershipEvaluation,overseerEvaluation,totalMark,result,startDate,endDate"
 	c.Body.Order = "totalMark+0 desc,marks+0 desc"
-
+	c.Body.Data = c.Body.Data[:0]
 	if len(c.Body.UserName) != 0 { // 用户名不为空
 		e, total, err := model.FindAllEvaluationPagedByTypeAndUsername(fields, c.Body.MaxResults, c.Body.StartIndex, c.Body.Order, c.Body.Fields[0], c.Body.UserName)
 		if err != nil {

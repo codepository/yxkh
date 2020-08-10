@@ -62,7 +62,7 @@ func setup() {
 
 	db.Set("gorm:table_options", "ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;").
 		AutoMigrate(&ResProject{}).AutoMigrate(&ResMark{}).AutoMigrate(&Label{}).AutoMigrate(&UserLabel{}).
-		AutoMigrate(&InfoDic{}).AutoMigrate(&Uploadfile{})
+		AutoMigrate(&InfoDic{})
 	db.Model(&ResProject{}).ModifyColumn("startDate", "date").ModifyColumn("endDate", "date").AddIndex("projectidindex", "projectId")
 	db.Model(&ResMark{}).ModifyColumn("startDate", "date").ModifyColumn("endDate", "date").AddForeignKey("projectId", "res_project(projectId)", "CASCADE", "CASCADE")
 	db.Model(&UserLabel{}).AddIndex("labelidindex", "label_id").AddForeignKey("label_id", "label(id)", "CASCADE", "CASCADE")

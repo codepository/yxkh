@@ -30,10 +30,21 @@ type CBody struct {
 	Metrics    string        `json:"metrics,omitempty"`
 	Fields     []string      `json:"fields,omitempty"`
 	Order      string        `json:"order,omitempty"`
+	// 是否分页显示
+	Paged bool `json:"paged"`
 }
 
 // ToString ToString
 func (c *Container) ToString() string {
 	str, _ := util.ToJSONStr(c)
 	return str
+}
+
+// ToPageJSON 转化成分页格式
+func (c *Container) ToPageJSON() (string, error) {
+	if c.Body.MaxResults == 0 {
+		c.Body.MaxResults = 10
+	}
+	pageIndex := c.Body.StartIndex/c.Body.MaxResults + 1
+	return util.ToPageJSON(c.Body.Data[0], c.Body.Total, pageIndex, c.Body.MaxResults)
 }

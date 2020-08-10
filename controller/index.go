@@ -60,7 +60,17 @@ func GetData(w http.ResponseWriter, r *http.Request) {
 		util.ResponseErr(w, err)
 		return
 	}
-	util.ResponseData(w, par.ToString())
+	if !par.Body.Paged {
+		util.ResponseData(w, par.ToString())
+		return
+	}
+	result, err := par.ToPageJSON()
+	if err != nil {
+		util.ResponseErr(w, err)
+		return
+	}
+	fmt.Fprintf(w, result)
+
 }
 
 // Export 导出数据
