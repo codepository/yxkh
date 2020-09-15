@@ -58,6 +58,15 @@ func (c *RemoteClient) Post(url string, params interface{}) ([]byte, error) {
 }
 
 // Get Get
-func (c *RemoteClient) Get() {
-
+func (c *RemoteClient) Get(url string) (string, error) {
+	resp, err := c.Client.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.New(string(content))
+	}
+	return string(content), nil
 }

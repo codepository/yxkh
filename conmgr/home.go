@@ -2,6 +2,7 @@ package conmgr
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/codepository/yxkh/model"
@@ -84,7 +85,9 @@ func GetHomeData(c *model.Container) error {
 		if err != nil {
 			return err
 		}
+		Conmgr.cacheMap[HomeDataCache] = c.Body.Data
 	} else {
+		log.Println("从缓存读取homedata")
 		c.Body.Data = Conmgr.cacheMap[HomeDataCache].([]interface{})
 	}
 	return nil

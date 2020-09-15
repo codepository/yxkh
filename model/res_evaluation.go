@@ -3,15 +3,21 @@ package model
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/mumushuiding/util"
 )
+
+// ResEvaluationTableName ResEvaluationTableName
+var ResEvaluationTableName = "res_evaluation"
 
 // ResEvaluation 申请表内容
 type ResEvaluation struct {
-	EID                int       `gorm:"primary_key column:eId" json:"eId,omitempty"`
+	EID                int       `gorm:"primary_key,column:eId" json:"eId,omitempty"`
 	StartDate          time.Time `gorm:"column:startDate" json:"startDate"`
 	EndDate            time.Time `gorm:"column:endDate" json:"endDate"`
-	ProcessInstanceID  int       `gorm:"column:processInstanceId" json:"processInstanceId,omitempty"`
+	ProcessInstanceID  string    `gorm:"column:processInstanceId" json:"processInstanceId,omitempty"`
 	SelfEvaluation     string    `gorm:"column:selfEvaluation" json:"selfEvaluation,omitempty"`
 	Attendance         string    `json:"attendance,omitempty"`
 	OverseerEvaluation string    `gorm:"column:overseerEvaluation" json:"overseerEvaluation,omitempty"`
@@ -43,6 +49,68 @@ type EvaluationUser struct {
 	UserID   int    `gorm:"column:userId" json:"userId,omitempty"`
 	Username string `json:"username,omitempty"`
 	DeptName string `gorm:"column:deptName" json:"deptName,omitempty"`
+}
+
+// EvaluationProcess EvaluationProcess
+type EvaluationProcess struct {
+	ResEvaluation
+	ProcessBean Process `json:"processBean,omitempty"`
+	Identity    string  `json:"identity,omiteymty"`
+}
+
+// FromMap FromMap
+func (e *ResEvaluation) FromMap(data map[string]interface{}) error {
+	if data["startDate"] == nil || data["endDate"] == nil {
+		return fmt.Errorf("startDate 和 endDate 不能为空")
+	}
+	startDate, err := util.ParseDate3(data["startDate"].(string))
+	if err != nil {
+		return err
+	}
+	endDate, err := util.ParseDate3(data["endDate"].(string))
+	if err != nil {
+		return err
+	}
+	delete(data, "startDate")
+	delete(data, "endDate")
+	s, _ := util.ToJSONStr(data)
+	// log.Println(s)
+	err = util.Str2Struct(s, e)
+	e.StartDate = startDate
+	e.EndDate = endDate
+	e.CreateTime = time.Now()
+	return err
+}
+
+// FirstOrCreate 存在就更新，不存在就插入
+func (e *ResEvaluation) FirstOrCreate() error {
+	if len(e.ProcessInstanceID) == 0 {
+		return fmt.Errorf("processInstanceId不能为空")
+	}
+	return db.Where(ResEvaluation{ProcessInstanceID: e.ProcessInstanceID}).Assign(e).FirstOrCreate(&ResEvaluation{}).Error
+}
+
+// FindSingleEvaluationProcess FindSingleEvaluationProcess
+func FindSingleEvaluationProcess(processInstanceID int) (*EvaluationProcess, error) {
+	var ep EvaluationProcess
+	var p Process
+	var err1, err2 error
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		err1 = db.Table(ResEvaluationTableName).Where("processInstanceId=?", processInstanceID).Find(&ep).Error
+		wg.Done()
+	}()
+	go func() {
+		err2 = db.Table(ProcessTabelName).Where("processInstanceId=?", processInstanceID).Find(&p).Error
+		wg.Done()
+	}()
+	wg.Wait()
+	if err1 != nil {
+		return nil, err1
+	}
+	ep.ProcessBean = p
+	return &ep, err2
 }
 
 // FindAllEvaluationPaged 查询所有的申请表

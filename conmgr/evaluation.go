@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/codepository/yxkh/model"
+	"github.com/mumushuiding/util"
 )
 
 // FindAllEvalution 查询所有申请表
@@ -21,6 +22,27 @@ func FindAllEvalution(c *model.Container) error {
 	}
 	c.Body.Data = append(c.Body.Data, e)
 	c.Body.Total = total
+	return nil
+}
+
+// FindSingleEvaluationProcess FindSingleEvaluationProcess
+func FindSingleEvaluationProcess(c *model.Container) error {
+	if c.Body.Params == nil || len(c.Body.Params) == 0 {
+		return errors.New(`参数格式:{"body":{"params":{"processInstanceId":3}}}`)
+	}
+	id, err := util.Interface2Int(c.Body.Params["processInstanceId"])
+	if err != nil {
+		return err
+	}
+	data, err := model.FindSingleEvaluationProcess(id)
+	if err != nil {
+		return err
+	}
+	// 任务还未完成
+	if data.ProcessBean.Completed == "0" {
+
+	}
+	c.Body.Data = append(c.Body.Data, data)
 	return nil
 }
 

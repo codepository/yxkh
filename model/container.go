@@ -31,7 +31,8 @@ type CBody struct {
 	Fields     []string      `json:"fields,omitempty"`
 	Order      string        `json:"order,omitempty"`
 	// 是否分页显示
-	Paged bool `json:"paged"`
+	Paged  bool                   `json:"paged"`
+	Params map[string]interface{} `json:"params,omitempty"`
 }
 
 // ToString ToString

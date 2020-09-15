@@ -7,10 +7,24 @@ import (
 	"github.com/codepository/yxkh/model"
 )
 
+// IsUserAPIAlive 远程用户接口是否可用
+func IsUserAPIAlive() bool {
+	url := model.APIClient.UserAPIURL + "/alive"
+	result, err := model.APIClient.Get(url)
+	if err != nil {
+		return false
+	}
+	if result == "1" {
+		return true
+	}
+	return false
+}
+
 // GetDataFromUserAPI GetDataFromUserAPI
-func GetDataFromUserAPI(method string, params map[string]interface{}) (interface{}, error) {
+func GetDataFromUserAPI(token, method string, params map[string]interface{}) (interface{}, error) {
 	var par model.Container
 	par.Body.Method = method
+	par.Header.Token = token
 	if params["max_results"] != nil {
 		switch params["max_results"].(type) {
 		case float64:
@@ -37,7 +51,7 @@ func GetDataFromUserAPI(method string, params map[string]interface{}) (interface
 		}
 		delete(params, "start_index")
 	}
-	par.Body.Data = append(par.Body.Data, params)
+	par.Body.Params = params
 	url := model.APIClient.UserAPIURL + "/getData"
 	result, err := model.APIClient.Post(url, par)
 	// log.Println("result:", string(result))
@@ -61,16 +75,50 @@ func GetDataFromUserAPI(method string, params map[string]interface{}) (interface
 	return body["data"], nil
 }
 
-// FindUsersUncompleteTask 未完成任务的用户
-func FindUsersUncompleteTask(taskname, start string) (interface{}, error) {
-	method := "visit/task/uncomplete"
-	params := map[string]interface{}{"task": taskname, "start": start}
-	result, err := GetDataFromUserAPI(method, params)
+// StartFlowByToken 启动流程
+func StartFlowByToken(token string, params map[string]interface{}) (interface{}, error) {
+	method := "exec/flow/startByToken"
+	result, err := GetDataFromUserAPI(token, method, params)
 	if err != nil {
 		return nil, err
 	}
 	if result == nil {
 		return nil, nil
+	}
+	datas := result.([]interface{})
+	if datas[0] == nil {
+		return nil, nil
+	}
+
+	return datas[0].(interface{}), nil
+}
+
+// CompleteProcessByToken 审批流程
+func CompleteProcessByToken(token string, params map[string]interface{}) error {
+	method := "exec/flow/completeFlowTask"
+	_, err := GetDataFromUserAPI(token, method, params)
+	return err
+
+}
+
+// DeleteFlowByID 删除流程
+func DeleteFlowByID(id interface{}) error {
+	method := "exec/flow/delete"
+	params := map[string]interface{}{"ThirdNo": id}
+	_, err := GetDataFromUserAPI("", method, params)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// FindUsersUncompleteTask 未完成任务的用户
+func FindUsersUncompleteTask(taskname, start string) (interface{}, error) {
+	method := "visit/task/uncomplete"
+	params := map[string]interface{}{"task": taskname, "start": start}
+	result, err := GetDataFromUserAPI("", method, params)
+	if err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -79,7 +127,7 @@ func FindUsersUncompleteTask(taskname, start string) (interface{}, error) {
 func FindTaskCompleteRates(taskname, start string) (interface{}, error) {
 	method := "visit/task/completeRate"
 	params := map[string]interface{}{"task": taskname, "start": start, "max_results": 20}
-	return GetDataFromUserAPI(method, params)
+	return GetDataFromUserAPI("", method, params)
 }
 
 // FindUseridsByTagsAndLevel 根据标签和职级查询用户id
@@ -87,7 +135,7 @@ func FindTaskCompleteRates(taskname, start string) (interface{}, error) {
 func FindUseridsByTagsAndLevel(tags []string, tagMethods []string, level []int) ([]interface{}, error) {
 	method := "visit/user/getUseridsByTagAndLevel"
 	params := map[string]interface{}{"tags": tags, "methods": tagMethods, "levels": level}
-	result, err := GetDataFromUserAPI(method, params)
+	result, err := GetDataFromUserAPI("", method, params)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +156,7 @@ func FindUseridsByTags(tags []string, tagMethod string) ([]interface{}, error) {
 	}
 	method := "visit/user/getUseridsByTagAndLevel"
 	params := map[string]interface{}{"tags": tags, "methods": []string{tagMethod}}
-	result, err := GetDataFromUserAPI(method, params)
+	result, err := GetDataFromUserAPI("", method, params)
 	if err != nil {
 		return nil, err
 	}

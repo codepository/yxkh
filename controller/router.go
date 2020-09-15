@@ -46,6 +46,12 @@ func SetRouters() {
 		{route: "visit/yxkh/findAllEvalutionRank", handler: conmgr.FindAllEvalutionRank},
 		// 导出半年和年度考核排行
 		{route: "export/yxkh/findAllEvalutionRank", handler: conmgr.ExportAllEvalutionRank},
+		// 查询所有流程
+		{route: "visit/yxkh/findAllProcess", handler: conmgr.FindAllProcess},
+		{route: "visit/yxkh/findSingleEvaluationProcess", handler: conmgr.FindSingleEvaluationProcess},
+		// 启动流程
+		{route: "exec/yxkh/startProcess", handler: conmgr.StartProcess},
+		{route: "exec/yxkh/completeProcess", handler: conmgr.CompleteProcess},
 	}
 }
 
