@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/mumushuiding/util"
 )
 
@@ -14,7 +15,11 @@ var ResEvaluationTableName = "res_evaluation"
 
 // ResEvaluation 申请表内容
 type ResEvaluation struct {
-	EID                int       `gorm:"primary_key,column:eId" json:"eId,omitempty"`
+	EID int `gorm:"primary_key,column:eId" json:"eId,omitempty"`
+	// UID 用户id
+	UID int `gorm:"column:uid" json:"uid"`
+	// Position 用户填表时的职务
+	Position           string    `json:"position"`
 	StartDate          time.Time `gorm:"column:startDate" json:"startDate"`
 	EndDate            time.Time `gorm:"column:endDate" json:"endDate"`
 	ProcessInstanceID  string    `gorm:"column:processInstanceId" json:"processInstanceId,omitempty"`
@@ -25,7 +30,7 @@ type ResEvaluation struct {
 	LeadershipEvaluation string `gorm:"column:leadershipEvaluation" json:"leadershipEvaluation,omitempty"`
 	// 半年或全年考核 群众评议
 	PublicEvaluation string `gorm:"column:publicEvaluation" json:"publicEvaluation,omitempty"`
-	// 半年或全年考核 组件考核
+	// 半年或全年考核 组织考核
 	OrganizationEvaluation string `gorm:"column:organizationEvaluation" json:"organizationEvaluation,omitempty"`
 	// 半年或全年考核 TotalMark 总分
 	TotalMark string `gorm:"column:totalMark" json:"totalMark,omitempty"`
@@ -90,8 +95,26 @@ func (e *ResEvaluation) FirstOrCreate() error {
 	return db.Where(ResEvaluation{ProcessInstanceID: e.ProcessInstanceID}).Assign(e).FirstOrCreate(&ResEvaluation{}).Error
 }
 
+// FindSingleEvaluation 根据流程ID查询
+func FindSingleEvaluation(processInstanceID interface{}) (*ResEvaluation, error) {
+	var ep ResEvaluation
+	err := db.Table(ResEvaluationTableName).Where("processInstanceId=?", processInstanceID).Find(&ep).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &ep, nil
+}
+
+// DelEvaluationByProcessInstanceID 根据流程ID来删除
+func DelEvaluationByProcessInstanceID(processInstanceID interface{}) error {
+	return db.Where("processInstanceId=?", processInstanceID).Delete(&ResEvaluation{}).Error
+}
+
 // FindSingleEvaluationProcess FindSingleEvaluationProcess
-func FindSingleEvaluationProcess(processInstanceID int) (*EvaluationProcess, error) {
+func FindSingleEvaluationProcess(processInstanceID interface{}) (*EvaluationProcess, error) {
 	var ep EvaluationProcess
 	var p Process
 	var err1, err2 error

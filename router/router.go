@@ -45,7 +45,4 @@ func setMux() {
 	Mux.HandleFunc("/api/v1/yxkh/mark/update", intercept(controller.UpdateMark))
 	Mux.HandleFunc(fmt.Sprintf("%s/mark/findMarkRankForHome", prefixV1), intercept(controller.FindMarkRankForHome))
 
-	// -------------------------- infodic ---------------
-	Mux.HandleFunc(fmt.Sprintf("%s/infodic/findAll", prefixV1), intercept(controller.FindAllInfoDic))
-
 }

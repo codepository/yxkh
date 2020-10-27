@@ -22,7 +22,7 @@ func SaveMark(w http.ResponseWriter, r *http.Request) {
 		util.ResponseErr(w, "字段 projectId 不能为空")
 		return
 	}
-	if len(receiver.UserID) == 0 {
+	if receiver.UserID == 0 {
 		util.ResponseErr(w, "字段 userId 不能为空")
 		return
 	}

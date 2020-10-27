@@ -24,7 +24,7 @@ type MarkReceiver struct {
 	StartDate   string `json:"startDate"`
 	EndDate     string `json:"endDate"`
 	CreateTime  string `json:"createTime"`
-	UserID      string `json:"userId"`
+	UserID      int    `json:"userId"`
 	Checked     string `json:"checked"`
 	PageIndex   int    `json:"pageIndex"`
 	PageSize    int    `json:"pageSize"`
@@ -99,8 +99,8 @@ func (r *MarkReceiver) getSQL() string {
 		// maps["projectId"] = p.ProjectId
 		sql += " and projectId=" + fmt.Sprintf("%d", r.ProjectID)
 	}
-	if len(r.UserID) > 0 {
-		sql += " and userId=" + r.UserID
+	if r.UserID != 0 {
+		sql += fmt.Sprintf(" and userId=%d", r.UserID)
 	}
 	if len(sql) > 0 && sql[0:4] == " and" {
 		return sql[5:]

@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -19,16 +20,90 @@ type ResMark struct {
 	StartDate   time.Time `gorm:"column:startDate" json:"startDate,omitempty"`
 	EndDate     time.Time `gorm:"column:endDate" json:"endDate,omitempty"`
 	CreateTime  time.Time `gorm:"column:createTime" json:"createTime,omitempty"`
-	UserID      string    `gorm:"column:userId;size:32" json:"userId,omitempty"`
+	UserID      int       `gorm:"column:userId;size:32" json:"userId,omitempty"`
 	Username    string    `gorm:"column:username;size:32" json:"username,omitempty"`
 	Checked     string    `gorm:"size:8;column:checked" json:"checked,omitempty"`
 }
 
+// FromJSON FromJSON
+func (m *ResMark) FromJSON(json map[string]interface{}) error {
+
+	if json["projectId"] == nil {
+		return fmt.Errorf("projectId 不能为空")
+	}
+	if json["markNumber"] == nil {
+		return errors.New("markNumber 分数不能为空")
+	}
+	if json["accordingly"] == nil {
+		return errors.New("accordingly 加分依据不能为空")
+	}
+	if json["markReason"] == nil {
+		return errors.New("markReason 加分原因不能为空")
+	}
+	if json["startDate"] == nil || json["endDate"] == nil {
+		return errors.New("startDate 和 endDate 加分时间段不能为空")
+	}
+	projectID, err := util.Interface2Int(json["projectId"])
+	if err != nil {
+		return err
+	}
+	m.ProjectID = projectID
+	m.MarkNumber = json["markNumber"].(string)
+	m.Accordingly = json["accordingly"].(string)
+	m.MarkReason = json["markReason"].(string)
+	start, err := util.ParseDate3(json["startDate"].(string))
+	if err != nil {
+		return err
+	}
+	m.StartDate = start
+	end, err := util.ParseDate3(json["endDate"].(string))
+	if err != nil {
+		return err
+	}
+	m.EndDate = end
+	if json["userId"] != nil {
+		uid, err := util.Interface2Int(json["userId"])
+		if err != nil {
+			return err
+		}
+		m.UserID = uid
+	}
+	if json["username"] != nil {
+		m.Username = json["username"].(string)
+	}
+	if json["checked"] != nil {
+		check, yes := json["checked"].(string)
+		if !yes {
+			return errors.New("checked 应为string")
+		}
+		m.Checked = check
+	}
+	return nil
+}
+
+// FirstOrCreate 不存在就创建
+func (m *ResMark) FirstOrCreate() error {
+	m.CreateTime = time.Now()
+	return db.Where(ResMark{ProjectID: m.ProjectID, MarkReason: m.MarkReason, Accordingly: m.Accordingly}).Assign(m).FirstOrCreate(m).Error
+}
+
+// DelMarkByIDs DelMarkByIDs
+func DelMarkByIDs(ids []int) error {
+	return db.Where(ids).Delete(&ResMark{}).Error
+}
+
+// UpdatesMark 只更新更改的字段
+func UpdatesMark(id int, params interface{}) error {
+
+	return db.Model(&ResMark{MarkID: id}).Updates(params).Error
+}
+
 // FindAllMark FindAllMark
-func FindAllMark(rawSQL string, values ...interface{}) ([]*ResMark, error) {
+func FindAllMark(query interface{}, values ...interface{}) ([]*ResMark, error) {
 
 	var datas []*ResMark
-	err := db.Raw(rawSQL, values...).Scan(&datas).Error
+	err := db.Where(query, values...).Find(&datas).Error
+	// err := db.Raw(rawSQL, values...).Scan(&datas).Error
 	return datas, err
 }
 

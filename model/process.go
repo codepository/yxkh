@@ -6,7 +6,7 @@ var ProcessTabelName = "process"
 // Process 流程
 type Process struct {
 	ProcessInstanceID     string `gorm:"primary_key;column:processInstanceId" json:"processInstanceId,omitempty"`
-	UserID                int    `gorm:"column:userId" json:"userId,omitempty"`
+	UserID                string `gorm:"column:userId" json:"userId,omitempty"`
 	ExecutionID           string `gorm:"column:executionId" json:"executionId,omitempty"`
 	RequestedDate         string `gorm:"column:requestedDate" json:"requestedDate,omitempty"`
 	Title                 string `gorm:"column:title" json:"title,omitempty"`

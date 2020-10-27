@@ -10,8 +10,8 @@ type InfoDic struct {
 }
 
 // FindAllInfoDic FindAllInfoDic
-func FindAllInfoDic(fields map[string]interface{}) ([]*InfoDic, error) {
+func FindAllInfoDic(query interface{}, values ...interface{}) ([]*InfoDic, error) {
 	info := []*InfoDic{}
-	err := db.Where(fields).Find(&info).Error
+	err := db.Where(query, values...).Find(&info).Error
 	return info, err
 }

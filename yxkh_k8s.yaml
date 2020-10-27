@@ -38,18 +38,20 @@ spec:
         ports:
         - containerPort: 8080
         env:
+          - name: Port
+            value: "8080"
           - name: DbType
             value: "mysql"
           - name: DbLogMode
             value: "false"
           - name: DbHost
-            value: localhost
+            value: 129.0.99.64
           - name: DbName
-            value: "yxkh"
+            value: "fznews_yxkh"
           - name: DbUser
             value: root
           - name: DbPassword
-            value: "123"
+            value: JXCot%nntYR%CMh0
           - name: UserAPIURL
             value: http://129.0.97.23:30739/api/v1/user
 

@@ -46,12 +46,31 @@ func SetRouters() {
 		{route: "visit/yxkh/findAllEvalutionRank", handler: conmgr.FindAllEvalutionRank},
 		// 导出半年和年度考核排行
 		{route: "export/yxkh/findAllEvalutionRank", handler: conmgr.ExportAllEvalutionRank},
-		// 查询所有流程
-		{route: "visit/yxkh/findAllProcess", handler: conmgr.FindAllProcess},
-		{route: "visit/yxkh/findSingleEvaluationProcess", handler: conmgr.FindSingleEvaluationProcess},
+		// ****************** 流程 *****************************
 		// 启动流程
 		{route: "exec/yxkh/startProcess", handler: conmgr.StartProcess},
 		{route: "exec/yxkh/completeProcess", handler: conmgr.CompleteProcess},
+		// 删除流程
+		{route: "exec/yxkh/delFlow", handler: conmgr.DelFlow},
+		// 查询流程数据
+		{route: "visit/yxkh/findFlowDatas", handler: conmgr.FindFlowDatas},
+		// ****************** 项目 *****************************
+		// 项目和评分查询
+		{route: "visit/yxkh/findAllProjectWithMarks", handler: conmgr.FindAllProjectWithMarks},
+		// 添加项目
+		{route: "exec/yxkh/addProject", handler: conmgr.AddProject},
+		// 删除项目
+		{route: "exec/yxkh/delProject", handler: conmgr.DelProject},
+		// 修改项目
+		{route: "exec/yxkh/updateProject", handler: conmgr.UpdateProject},
+		// 添加评分
+		{route: "exec/yxkh/addMark", handler: conmgr.AddMark},
+		// 删除评分
+		{route: "exec/yxkh/delMark", handler: conmgr.DelMark},
+		// 修改评分
+		{route: "exec/yxkh/updateMark", handler: conmgr.UpdateMark},
+		// 字典查询
+		{route: "visit/yxkh/findDict", handler: conmgr.FindallDict},
 	}
 }
 

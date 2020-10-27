@@ -94,10 +94,21 @@ func StartFlowByToken(token string, params map[string]interface{}) (interface{},
 }
 
 // CompleteProcessByToken 审批流程
-func CompleteProcessByToken(token string, params map[string]interface{}) error {
+func CompleteProcessByToken(token string, params map[string]interface{}) ([]interface{}, error) {
 	method := "exec/flow/completeFlowTask"
-	_, err := GetDataFromUserAPI(token, method, params)
-	return err
+	result, err := GetDataFromUserAPI(token, method, params)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	datas := result.([]interface{})
+	// if datas[0] == nil {
+	// 	return nil, nil
+	// }
+
+	return datas, nil
 
 }
 

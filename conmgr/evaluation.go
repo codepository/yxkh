@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/codepository/yxkh/model"
-	"github.com/mumushuiding/util"
 )
 
 // FindAllEvalution 查询所有申请表
@@ -30,11 +29,11 @@ func FindSingleEvaluationProcess(c *model.Container) error {
 	if c.Body.Params == nil || len(c.Body.Params) == 0 {
 		return errors.New(`参数格式:{"body":{"params":{"processInstanceId":3}}}`)
 	}
-	id, err := util.Interface2Int(c.Body.Params["processInstanceId"])
-	if err != nil {
-		return err
+
+	if c.Body.Params["processInstanceId"] == nil {
+		return errors.New("processInstanceId 不能为空")
 	}
-	data, err := model.FindSingleEvaluationProcess(id)
+	data, err := model.FindSingleEvaluationProcess(c.Body.Params["processInstanceId"])
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package conmgr
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -92,6 +93,81 @@ func FindMarkRankCurrentYearByGroup(groups []string, level [][]int, tags []strin
 	}
 	datas = append(datas, fields)
 	datas = append(datas, groups)
-	return datas, nil
 
+	return datas, nil
+}
+
+// UpdateMark 修改评分
+func UpdateMark(c *model.Container) error {
+	errstr := `参数格式：{"body":"params":{"mark":{"markId":2,"markNumber":"3","markReason":"原因"}}} markNumber必须为字符串`
+	if len(c.Body.Params) == 0 || c.Body.Params["mark"] == nil {
+		return errors.New(errstr)
+	}
+	mark, yes := c.Body.Params["mark"].(map[string]interface{})
+
+	if !yes {
+		return errors.New(errstr)
+	}
+	if mark["markId"] == nil {
+		return errors.New("markId 不能为空")
+	}
+	id, err := util.Interface2Int(mark["markId"])
+	if err != nil {
+		return err
+	}
+	err = model.UpdatesMark(id, c.Body.Params["mark"])
+	return err
+}
+
+// DelMark 删除
+func DelMark(c *model.Container) error {
+	errstr := `参数格式:{"body":"params":{"ids":[1,3]}} ids是要删除的评分`
+	if len(c.Body.Params) == 0 || c.Body.Params["ids"] == nil {
+		return errors.New(errstr)
+	}
+	var ids []int
+	for _, id := range c.Body.Params["ids"].([]interface{}) {
+		i, err := util.Interface2Int(id)
+		if err != nil {
+			return err
+		}
+		ids = append(ids, i)
+	}
+	err := model.DelMarkByIDs(ids)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+// AddMark 添加分数
+func AddMark(c *model.Container) error {
+	errstr := `参数格式:{"body":"data":[[{"userId":2,"username":"张三","projectId":1,"markNumber":"2.0","markReason":"加分原因","accordingly":"评分依据","startDate":"2020-07-01","endDate":"2020-07-31"}]]}`
+	// 验证参数
+	if len(c.Body.Data) == 0 || c.Body.Data[0] == nil {
+		return fmt.Errorf(errstr)
+	}
+	var marks []*model.ResMark
+	for _, d := range c.Body.Data[0].([]interface{}) {
+		m := d.(map[string]interface{})
+		mark := &model.ResMark{}
+		err := mark.FromJSON(m)
+		if err != nil {
+			return err
+		}
+		marks = append(marks, mark)
+	}
+	// 存储
+	var ids []int
+	for _, m := range marks {
+		err := m.FirstOrCreate()
+		if err != nil {
+			return err
+		}
+		ids = append(ids, m.MarkID)
+	}
+	c.Body.Data = c.Body.Data[:0]
+	c.Body.Data = append(c.Body.Data, ids)
+	return nil
 }
