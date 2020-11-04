@@ -3,7 +3,7 @@ package conmgr
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/codepository/yxkh/model"
 	"github.com/mumushuiding/util"
@@ -134,8 +134,62 @@ func CompleteProcess(c *model.Container) error {
 	if err != nil {
 		return fmt.Errorf("流程提交失败:%s", err.Error())
 	}
+	// 一线考核流程结束之后让分数生效，以及根据评价进行扣分
+	process := result[0].(map[string]interface{})
+	completed, err := util.Interface2Int(process["completed"])
+	if err != nil {
+		return err
+	}
+	// 这里涉及分布式事务,需要用到日志进行辅助
+	if completed == 1 {
+		data, err := ExecWhenProcessCompleted(process["processInstanceId"].(string))
+		if err != nil {
+			errlog := &model.ErrLog{}
+			errlog.CreateTime = time.Now()
+			errlog.BusinessType = process["businessType"].(string)
+			errlog.Data = data.ToString()
+			errlog.Err = err.Error()
+			errlog.Key = process["processInstanceId"].(string)
+			err1 := errlog.Create()
+			if err1 != nil {
+				return fmt.Errorf("保存错误日志失败，请通知管理员，原因:%s", err1.Error())
+			}
+			return fmt.Errorf("执行流程结束程序失败，请通知管理员，原因:%s", err.Error())
+		}
+	}
 	c.Body.Data = append(c.Body.Data, result...)
 	return nil
+}
+
+// ExecWhenProcessCompleted 当流程结束时
+func ExecWhenProcessCompleted(processInstanceID string) (*ReExecData, error) {
+	// 查询流程
+	println("执行ExecWhenProcessCompleted函数")
+	red := &ReExecData{Key: processInstanceID, FuncName: "ExecWhenProcessCompleted"}
+	ps, err := FindAllProcess(map[string]interface{}{"processInstanceId": processInstanceID})
+	if err != nil {
+		return red, fmt.Errorf("查询流程报错:%s", err.Error())
+	}
+	if len(ps) == 0 {
+		return red, fmt.Errorf("流程%s不存在", processInstanceID)
+	}
+	switch ps[0].BusinessType {
+	// 月度考核
+	case YXKHYdkh:
+		// 根据组织考核结果进行评分,data作用是保存需要存储的数据和类型
+		data, err := RemarkEvaluationByProcessInstanceID(processInstanceID)
+		if err != nil {
+			return data, fmt.Errorf("月度考核评分报错:%s", err.Error())
+		}
+		// 项目加分设置为已经确认
+		data, err = CheckProjectByProcessInstanceID(processInstanceID)
+		if err != nil {
+			return data, fmt.Errorf("项目确认失败:%s", err.Error())
+		}
+		break
+	default:
+	}
+	return nil, nil
 }
 
 // FirstOrCreateFlowData 保存流程数据
@@ -267,68 +321,6 @@ func FindFlowDatas(c *model.Container) error {
 		return err
 	}
 	c.Body.Data = append(c.Body.Data, data)
-	return nil
-
-}
-
-// FindAllProcess FindAllProcess
-func FindAllProcess(c *model.Container) error {
-	errStr := fmt.Sprintf(`参数格式{"body":{"page":true,"params":{"deptNames":"a,b,c","title":"张三-月度考核"}}}`)
-	if c.Body.Params == nil || len(c.Body.Params) == 0 {
-		return errors.New(errStr)
-	}
-	title := c.Body.Params["title"]
-	deptNames := c.Body.Params["deptNames"]
-	username := c.Body.Params["username"]
-	businessType := c.Body.Params["businessType"]
-	businessKey := c.Body.Params["businessKey"]
-	comment := c.Body.Params["comment"]
-	userid := c.Body.Params["userId"]
-	var querybuffer strings.Builder
-	if title != nil && len(title.(string)) != 0 {
-		querybuffer.WriteString("and title like '%" + title.(string) + "%' ")
-	}
-	if username != nil && len(username.(string)) != 0 {
-		querybuffer.WriteString("and username like '%" + username.(string) + "%' ")
-	}
-	if userid != nil {
-		id, err := util.Interface2Int(userid)
-		if err != nil {
-			return errors.New("userId类型有误:" + err.Error())
-		}
-		if id != 0 {
-			querybuffer.WriteString(fmt.Sprintf("and userId=%d ", id))
-		}
-	}
-	if businessType != nil && len(businessType.(string)) != 0 {
-		querybuffer.WriteString("and businessType='" + businessType.(string) + "' ")
-	}
-
-	if businessKey != nil && len(businessKey.(string)) != 0 {
-		querybuffer.WriteString("and businessKey='" + businessKey.(string) + "' ")
-	}
-	if comment != nil && len(comment.(string)) != 0 {
-		querybuffer.WriteString("and processInstanceId in (select processInstanceId from res_evaluation where overseerEvaluation='" + comment.(string) + "') ")
-	}
-	if deptNames != nil && len(deptNames.(string)) != 0 {
-		var dept strings.Builder
-		for _, d := range strings.Split(deptNames.(string), ",") {
-			dept.WriteString(",'" + d + "'")
-		}
-		querybuffer.WriteString(fmt.Sprintf("and deptName in (%v) ", dept.String()[1:]))
-	}
-	var query string
-	if querybuffer.Len() == 0 {
-
-	} else {
-		query = querybuffer.String()[4:]
-	}
-	datas, total, err := model.FindAllProcessPaged(c.Body.MaxResults, c.Body.StartIndex, query)
-	if err != nil {
-		return err
-	}
-	c.Body.Data = append(c.Body.Data, datas)
-	c.Body.Total = total
 	return nil
 
 }

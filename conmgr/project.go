@@ -104,3 +104,20 @@ func AddProject(c *model.Container) error {
 	return nil
 
 }
+
+// CheckProjectByProcessInstanceID 使月度考核项目的评分生效
+func CheckProjectByProcessInstanceID(processInstanceID string) (*ReExecData, error) {
+	red := &ReExecData{Key: processInstanceID, FuncName: "CheckProjectByProcessInstanceID"}
+	// 查询对应的月度考核
+	e, err := model.FindSingleEvaluation(processInstanceID)
+	if err != nil {
+		return red, fmt.Errorf("查询月度考核失败:%s", err.Error())
+	}
+	query := map[string]interface{}{"startDate": util.FormatDate3(e.StartDate), "endDate": util.FormatDate3(e.EndDate), "userId": e.UID}
+	values := map[string]interface{}{"checked": "1"}
+	err = model.UpdateMarks(query, values)
+	if err != nil {
+		return red, fmt.Errorf("使加减分生效失败:%s", err.Error())
+	}
+	return nil, nil
+}

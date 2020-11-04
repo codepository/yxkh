@@ -24,27 +24,6 @@ func FindAllEvalution(c *model.Container) error {
 	return nil
 }
 
-// FindSingleEvaluationProcess FindSingleEvaluationProcess
-func FindSingleEvaluationProcess(c *model.Container) error {
-	if c.Body.Params == nil || len(c.Body.Params) == 0 {
-		return errors.New(`参数格式:{"body":{"params":{"processInstanceId":3}}}`)
-	}
-
-	if c.Body.Params["processInstanceId"] == nil {
-		return errors.New("processInstanceId 不能为空")
-	}
-	data, err := model.FindSingleEvaluationProcess(c.Body.Params["processInstanceId"])
-	if err != nil {
-		return err
-	}
-	// 任务还未完成
-	if data.ProcessBean.Completed == "0" {
-
-	}
-	c.Body.Data = append(c.Body.Data, data)
-	return nil
-}
-
 // FindAllEvalutionRank 半年和年度考核排行
 func FindAllEvalutionRank(c *model.Container) error {
 	errStr := fmt.Sprintf(`参数格式:{"body":{"fields":["2020年上半年-半年考核"],"max_results":10,"start_index":0,"order":"marks desc","metrics":"第一考核组成员,第二考核组成员","username":"小明"}} metrics为用户标签,可以为空;username可以为空`)
@@ -92,4 +71,39 @@ func FindAllEvalutionRank(c *model.Container) error {
 	}
 
 	return nil
+}
+
+// RemarkEvaluationByProcessInstanceID 根据流程检查月度考核评价，并根据评价添加加减分
+func RemarkEvaluationByProcessInstanceID(processInstanceID string) (*ReExecData, error) {
+	red := &ReExecData{Key: processInstanceID, FuncName: "RemarkEvaluationByProcessInstanceID"}
+	// 查询对应的月度考核
+	e, err := model.FindSingleEvaluation(processInstanceID)
+	if err != nil {
+		return red, fmt.Errorf("查询月度考核失败:%s", err.Error())
+	}
+	// 查询 organizationEvaluation 字段所对应的加减分
+	dicName := ""
+	switch e.OrganizationEvaluation {
+	case "优秀":
+		dicName = "月考评优"
+		break
+	case "基本合格":
+		dicName = "月考基本合格"
+		break
+	case "不合格":
+		dicName = "月考不合格"
+		break
+	default:
+		return red, fmt.Errorf("月度考核评价【%s】不存在，请务必联系管理员", e.OverseerEvaluation)
+	}
+	dic, err := model.FindAllInfoDic(map[string]interface{}{"type": "月考自动加减分", "name": dicName})
+	if err != nil || len(dic) == 0 {
+		return red, fmt.Errorf("查询字典【%s】失败:%s", dicName, err.Error())
+	}
+	// 添加加减分
+	err = model.AddProjectWithMark(e.StartDate, e.EndDate, "系统导入", e.UID, "1", dic[0].Value, dicName)
+	if err != nil {
+		return red, fmt.Errorf("月度考核自动加分失败:%s", err.Error())
+	}
+	return nil, nil
 }

@@ -60,6 +60,10 @@ func New() {
 // cronTaskStart 启动定时任务
 func cronTaskStart(cm *ConnManager) {
 	log.Println("启动定时任务")
+	err := ReExeProcessByErrLog()
+	if err != nil {
+		println(err)
+	}
 out:
 	for {
 		now := time.Now()
@@ -74,6 +78,8 @@ out:
 		case <-t.C:
 			// 刷新缓存表
 			go RefreshCacheMap()
+			// 处理分布式错误
+			go ReExeProcessByErrLog()
 		}
 	}
 }

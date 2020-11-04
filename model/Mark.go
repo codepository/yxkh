@@ -77,6 +77,8 @@ func (m *ResMark) FromJSON(json map[string]interface{}) error {
 			return errors.New("checked 应为string")
 		}
 		m.Checked = check
+	} else {
+		m.Checked = "0"
 	}
 	return nil
 }
@@ -180,4 +182,9 @@ func (m *ResMark) prepareData() error {
 		m.Checked = "0"
 	}
 	return nil
+}
+
+// UpdateMarks 更新值
+func UpdateMarks(query interface{}, values interface{}) error {
+	return db.Model(&ResMark{}).Where(query).Updates(values).Error
 }

@@ -54,6 +54,7 @@ func SetRouters() {
 		{route: "exec/yxkh/delFlow", handler: conmgr.DelFlow},
 		// 查询流程数据
 		{route: "visit/yxkh/findFlowDatas", handler: conmgr.FindFlowDatas},
+		{route: "visit/yxkh/findAllProcess", handler: conmgr.FindallProcess},
 		// ****************** 项目 *****************************
 		// 项目和评分查询
 		{route: "visit/yxkh/findAllProjectWithMarks", handler: conmgr.FindAllProjectWithMarks},

@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -167,4 +168,35 @@ func DelProjectByIDs(id []int) error {
 // Update Update
 func (p *ResProject) Update() error {
 	return db.Model(&ResProject{}).Updates(p).Error
+}
+
+// AddProjectWithMark 添加项目并评分
+// startDate、endDate、userID 必不可少
+func AddProjectWithMark(startDate, endDate time.Time, projectContent string, userID int, checked, markNumber, markReason string) error {
+	// 先添加项目，如果已经存在就不添加
+	p := &ResProject{
+		ProjectContent: projectContent,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		UserID:         userID,
+	}
+	err := p.FirstOrCreate()
+	if err != nil {
+		return fmt.Errorf("添加项目失败:%s", err.Error())
+	}
+	// 为项目添加评分，如果已经存在就不添加
+	mark := &ResMark{
+		ProjectID:  p.ProjectID,
+		UserID:     userID,
+		Checked:    checked,
+		MarkReason: markReason,
+		MarkNumber: markNumber,
+		StartDate:  startDate,
+		EndDate:    endDate,
+	}
+	err = mark.FirstOrCreate()
+	if err != nil {
+		return fmt.Errorf("添加分数失败:%s", err.Error())
+	}
+	return nil
 }

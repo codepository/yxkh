@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/codepository/yxkh/model"
+	"github.com/mumushuiding/util"
 )
 
 // IsUserAPIAlive 远程用户接口是否可用
@@ -110,6 +111,44 @@ func CompleteProcessByToken(token string, params map[string]interface{}) ([]inte
 
 	return datas, nil
 
+}
+
+// FindallProcess 查询所有流程
+func FindallProcess(c *model.Container) error {
+	data, err := FindAllProcess(c.Body.Params)
+	if err != nil {
+		return err
+	}
+	c.Body.Data = append(c.Body.Data, data)
+	return nil
+}
+
+// FindAllProcess 查询所有流程
+func FindAllProcess(params map[string]interface{}) ([]*model.Process, error) {
+	method := "visit/flow/findall"
+	data, err := GetDataFromUserAPI("", method, params)
+	if err != nil {
+		return nil, err
+	}
+	datas := data.([]interface{})
+	if len(datas) == 0 {
+		return make([]*model.Process, 0), nil
+	}
+	var result []*model.Process
+	if datas[0] == nil {
+		return make([]*model.Process, 0), nil
+	}
+	for _, d := range datas[0].([]interface{}) {
+		// fmt.Println(reflect.TypeOf(d))
+		process := &model.Process{}
+		str, _ := util.ToJSONStr(d)
+		err := util.Str2Struct(str, process)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, process)
+	}
+	return result, nil
 }
 
 // DeleteFlowByID 删除流程
