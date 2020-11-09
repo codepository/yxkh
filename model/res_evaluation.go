@@ -32,9 +32,9 @@ type ResEvaluation struct {
 	PublicEvaluation string `gorm:"column:publicEvaluation" json:"publicEvaluation,omitempty"`
 	// 半年或全年考核 组织考核
 	OrganizationEvaluation string `gorm:"column:organizationEvaluation" json:"organizationEvaluation,omitempty"`
-	// 半年或全年考核 TotalMark 总分
+	// 半年或全年考核 TotalMark 总分或考评总分
 	TotalMark string `gorm:"column:totalMark" json:"totalMark,omitempty"`
-	// 半年或全年考核 Marks 考效总分
+	// 半年或全年考核 Marks 考效总分或考核量化分
 	Marks             string    `json:"marks,omitempty"`
 	EvaluationType    string    `gorm:"column:evaluationType" json:"evaluationType,omitempty"`
 	CreateTime        time.Time `gorm:"column:createTime" json:"createTime"`

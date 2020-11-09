@@ -188,3 +188,12 @@ func (m *ResMark) prepareData() error {
 func UpdateMarks(query interface{}, values interface{}) error {
 	return db.Model(&ResMark{}).Where(query).Updates(values).Error
 }
+
+// SumMarks 加减分合计
+func SumMarks(startDate, endDate string, query interface{}, values ...interface{}) (string, error) {
+	var mark ResMark
+
+	err := db.Select("sum(markNumber) as markNumber").Where(query, values...).Where("startDate>=? and endDate<=?", startDate, endDate).
+		Find(&mark).Error
+	return mark.MarkNumber, err
+}

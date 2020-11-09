@@ -171,3 +171,40 @@ func AddMark(c *model.Container) error {
 	c.Body.Data = append(c.Body.Data, ids)
 	return nil
 }
+
+// SumMarks 合计加减分
+func SumMarks(c *model.Container) error {
+	errstr := `参数格式:{"body":"params":{"startDate":"2020-01-02","endDate":"2020-01-31","userId":114}} 参数不能全为空`
+	if len(c.Body.Params) == 0 {
+		return fmt.Errorf(errstr)
+	}
+	if c.Body.Params["startDate"] == nil {
+		return fmt.Errorf("startDate 不能为空，如：2020-01-31")
+	}
+	start, ok := c.Body.Params["startDate"].(string)
+	if !ok {
+		return fmt.Errorf("startDate 必须为字符串，如：2020-01-31")
+	}
+	delete(c.Body.Params, "startDate")
+	c.Body.Params["checked"] = 1
+	var end string
+	if c.Body.Params["endDate"] != nil {
+		end, ok = c.Body.Params["endDate"].(string)
+		if !ok {
+			return fmt.Errorf("endDate 必须为字符串,如：2020-01-31")
+		}
+		delete(c.Body.Params, "endDate")
+	} else {
+		end = util.FormatDate3(time.Now())
+	}
+	if len(end) == 10 {
+		end = end + " 23:59:59"
+	}
+	total, err := model.SumMarks(start, end, c.Body.Params)
+	if err != nil {
+		return err
+	}
+	c.Body.Data = append(c.Body.Data, total)
+	return nil
+
+}

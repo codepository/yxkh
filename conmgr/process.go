@@ -177,12 +177,12 @@ func ExecWhenProcessCompleted(processInstanceID string) (*ReExecData, error) {
 	// 月度考核
 	case YXKHYdkh:
 		// 根据组织考核结果进行评分,data作用是保存需要存储的数据和类型
-		data, err := RemarkEvaluationByProcessInstanceID(processInstanceID)
+		_, err := RemarkEvaluationByProcessInstanceID(processInstanceID)
 		if err != nil {
-			return data, fmt.Errorf("月度考核评分报错:%s", err.Error())
+			return red, fmt.Errorf("月度考核评分报错:%s", err.Error())
 		}
 		// 项目加分设置为已经确认
-		data, err = CheckProjectByProcessInstanceID(processInstanceID)
+		data, err := CheckProjectByProcessInstanceID(processInstanceID)
 		if err != nil {
 			return data, fmt.Errorf("项目确认失败:%s", err.Error())
 		}

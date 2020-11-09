@@ -70,6 +70,8 @@ func SetRouters() {
 		{route: "exec/yxkh/delMark", handler: conmgr.DelMark},
 		// 修改评分
 		{route: "exec/yxkh/updateMark", handler: conmgr.UpdateMark},
+		// 合计加减分
+		{route: "visit/yxkh/sumMarks", handler: conmgr.SumMarks},
 		// 字典查询
 		{route: "visit/yxkh/findDict", handler: conmgr.FindallDict},
 	}

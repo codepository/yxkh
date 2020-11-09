@@ -83,7 +83,7 @@ func RemarkEvaluationByProcessInstanceID(processInstanceID string) (*ReExecData,
 	}
 	// 查询 organizationEvaluation 字段所对应的加减分
 	dicName := ""
-	switch e.OrganizationEvaluation {
+	switch e.OverseerEvaluation {
 	case "优秀":
 		dicName = "月考评优"
 		break
@@ -101,7 +101,7 @@ func RemarkEvaluationByProcessInstanceID(processInstanceID string) (*ReExecData,
 		return red, fmt.Errorf("查询字典【%s】失败:%s", dicName, err.Error())
 	}
 	// 添加加减分
-	err = model.AddProjectWithMark(e.StartDate, e.EndDate, "系统导入", e.UID, "1", dic[0].Value, dicName)
+	err = model.AddProjectWithMark(e.StartDate, e.EndDate, dicName, e.UID, "1", dic[0].Value, dicName)
 	if err != nil {
 		return red, fmt.Errorf("月度考核自动加分失败:%s", err.Error())
 	}
