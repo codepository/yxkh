@@ -40,12 +40,15 @@ func SetRouters() {
 	routers = []*RouteHandler{
 		{route: "visit/yxkh/homedata", handler: conmgr.GetHomeData},
 		{route: "visit/yxkh/refreshhomedata", handler: conmgr.RefreshHomeData},
+		// ***************** 工作考核 ***************************
 		// 查询半年全年考核
 		{route: "visit/yxkh/findAllEvalution", handler: conmgr.FindAllEvalution},
 		// 半年和年度考核排行
 		{route: "visit/yxkh/findAllEvalutionRank", handler: conmgr.FindAllEvalutionRank},
 		// 导出半年和年度考核排行
 		{route: "export/yxkh/findAllEvalutionRank", handler: conmgr.ExportAllEvalutionRank},
+		// 查询半年、年度考核评分占比
+		{route: "visit/yxkh/scoreShare", handler: conmgr.ScoreShare},
 		// ****************** 流程 *****************************
 		// 启动流程
 		{route: "exec/yxkh/startProcess", handler: conmgr.StartProcess},

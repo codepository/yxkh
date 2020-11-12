@@ -3,6 +3,7 @@ package conmgr
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/codepository/yxkh/model"
 	"github.com/mumushuiding/util"
@@ -218,4 +219,38 @@ func FindUseridsByTags(tags []string, tagMethod string) ([]interface{}, error) {
 		return nil, nil
 	}
 	return datas[0].([]interface{}), nil
+}
+
+// FindDepartments 查询部门
+func FindDepartments(params map[string]interface{}) ([]interface{}, error) {
+	method := "visit/department/find"
+	result, err := GetDataFromUserAPI("", method, params)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	datas := result.([]interface{})
+	if datas[0] == nil {
+		return nil, nil
+	}
+	return datas[0].([]interface{}), nil
+}
+
+// FindDepartAttributeByID 根据id查询部门属性，部门属性有:1-采编经营类，2-行政后勤类
+func FindDepartAttributeByID(ID int) (int, error) {
+	datas, err := FindDepartments(map[string]interface{}{"id": ID})
+	if err != nil {
+		return 0, fmt.Errorf("查询部门属性报错:%s", err.Error())
+	}
+	dept, ok := datas[0].(map[string]interface{})
+	if !ok {
+		return 0, fmt.Errorf("返回结果不是json格式")
+	}
+	att, err := util.Interface2Int(dept["attribute"])
+	if err != nil {
+		return 0, err
+	}
+	return att, nil
 }
