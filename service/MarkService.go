@@ -49,16 +49,16 @@ func (r *MarkReceiver) Save() (int, error) {
 	return entity.MarkID, nil
 }
 func (r *MarkReceiver) prepareData() (*model.ResMark, error) {
-	var start, end time.Time
+
 	var err error
 	if len(r.StartDate) > 0 {
-		start, err = util.ParseDate(r.StartDate, util.YYYY_MM_DD)
+		_, err = util.ParseDate(r.StartDate, util.YYYY_MM_DD)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if len(r.EndDate) > 0 {
-		end, err = util.ParseDate(r.EndDate, util.YYYY_MM_DD)
+		_, err = util.ParseDate(r.EndDate, util.YYYY_MM_DD)
 		if err != nil {
 			return nil, err
 		}
@@ -69,8 +69,8 @@ func (r *MarkReceiver) prepareData() (*model.ResMark, error) {
 		MarkNumber:  r.MarkNumber,
 		MarkReason:  r.MarkReason,
 		Accordingly: r.Accordingly,
-		StartDate:   start,
-		EndDate:     end,
+		StartDate:   r.StartDate,
+		EndDate:     r.EndDate,
 		UserID:      r.UserID,
 		Checked:     r.Checked,
 	}

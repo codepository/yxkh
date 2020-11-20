@@ -22,6 +22,57 @@ func IsUserAPIAlive() bool {
 	return false
 }
 
+// GetDataFromUserAPI2 GetDataFromUserAPI2
+func GetDataFromUserAPI2(par model.Container) (interface{}, error) {
+	if par.Body.Params["max_results"] != nil {
+		switch par.Body.Params["max_results"].(type) {
+		case float64:
+			par.Body.MaxResults = int(par.Body.Params["max_results"].(float64))
+			break
+		case int:
+			par.Body.MaxResults = par.Body.Params["max_results"].(int)
+			break
+		default:
+			return nil, errors.New("max_results 必须为数字")
+		}
+		delete(par.Body.Params, "max_results")
+	}
+	if par.Body.Params["start_index"] != nil {
+		switch par.Body.Params["start_index"].(type) {
+		case float64:
+			par.Body.StartIndex = int(par.Body.Params["start_index"].(float64))
+			break
+		case int:
+			par.Body.StartIndex = par.Body.Params["start_index"].(int)
+			break
+		default:
+			return nil, errors.New("start_index 必须为数字")
+		}
+		delete(par.Body.Params, "start_index")
+	}
+	url := model.APIClient.UserAPIURL + "/getData"
+	result, err := model.APIClient.Post(url, par)
+	// log.Println("result:", string(result))
+	if err != nil {
+		return nil, err
+	}
+	map1 := make(map[string]interface{})
+	err = json.Unmarshal(result, &map1)
+	if err != nil {
+		return nil, err
+	}
+	if map1["status"].(float64) != 200 {
+		return nil, errors.New(map1["message"].(string))
+	}
+	msg := map1["message"].(map[string]interface{})
+	body := msg["body"].(map[string]interface{})
+	// err = util.Str2Struct(map1["message"], &d)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	return body["data"], nil
+}
+
 // GetDataFromUserAPI GetDataFromUserAPI
 func GetDataFromUserAPI(token, method string, params map[string]interface{}) (interface{}, error) {
 	var par model.Container
@@ -238,9 +289,9 @@ func FindDepartments(params map[string]interface{}) ([]interface{}, error) {
 	return datas[0].([]interface{}), nil
 }
 
-// FindDepartAttributeByID 根据id查询部门属性，部门属性有:1-采编经营类，2-行政后勤类
-func FindDepartAttributeByID(ID int) (int, error) {
-	datas, err := FindDepartments(map[string]interface{}{"id": ID})
+// FindDepartAttribute 查询部门属性，部门属性有:1-采编经营类，2-行政后勤类
+func FindDepartAttribute(params map[string]interface{}) (int, error) {
+	datas, err := FindDepartments(params)
 	if err != nil {
 		return 0, fmt.Errorf("查询部门属性报错:%s", err.Error())
 	}
@@ -253,4 +304,84 @@ func FindDepartAttributeByID(ID int) (int, error) {
 		return 0, err
 	}
 	return att, nil
+}
+
+// FindAllUsers 查询所有用户
+func FindAllUsers(fields string, params map[string]interface{}) ([]interface{}, error) {
+	var par model.Container
+	par.Body.Method = "visit/user/findAll"
+	par.Body.Params = params
+	par.Body.Metrics = fields
+	result, err := GetDataFromUserAPI2(par)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	datas := result.([]interface{})
+	if datas[0] == nil {
+		return nil, nil
+	}
+	return datas[0].([]interface{}), nil
+}
+
+// GetUseridAndDeptByMobileOrName 根据电话或名字查询用户id和部门id
+func GetUseridAndDeptByMobileOrName(mobileOrName string) (int, int, error) {
+	fields := "id,departmentid"
+	params := make(map[string]interface{})
+	// 判断是否是电话
+	if util.IsMobile(mobileOrName) {
+		params["mobile"] = mobileOrName
+	} else {
+		params["name"] = mobileOrName
+	}
+	datas, err := FindAllUsers(fields, params)
+	if err != nil {
+		return 0, 0, err
+	}
+	if len(datas) == 0 {
+		return 0, 0, fmt.Errorf("用户【%s】不存在", mobileOrName)
+	}
+	if len(datas) > 1 {
+		return 0, 0, fmt.Errorf("用户【%s】存在重名,请用电话重试", mobileOrName)
+	}
+	user := datas[0].(map[string]interface{})
+	id, err := util.Interface2Int(user["id"])
+	if err != nil {
+		return 0, 0, err
+	}
+	departmentid, err := util.Interface2Int(user["departmentid"])
+	if err != nil {
+		return 0, 0, err
+	}
+	return id, departmentid, nil
+}
+
+// GetUseridByMobileOrName 根据电话或名字查询用户
+func GetUseridByMobileOrName(mobileOrName string) (int, error) {
+	fields := "id"
+	params := make(map[string]interface{})
+	// 判断是否是电话
+	if util.IsMobile(mobileOrName) {
+		params["mobile"] = mobileOrName
+	} else {
+		params["name"] = mobileOrName
+	}
+	datas, err := FindAllUsers(fields, params)
+	if err != nil {
+		return 0, err
+	}
+	if len(datas) == 0 {
+		return 0, fmt.Errorf("用户【%s】不存在", mobileOrName)
+	}
+	if len(datas) > 1 {
+		return 0, fmt.Errorf("用户【%s】存在重名,请用电话重试", mobileOrName)
+	}
+	user := datas[0].(map[string]interface{})
+	id, err := util.Interface2Int(user["id"])
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }

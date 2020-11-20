@@ -38,6 +38,8 @@ type Configuration struct {
 	AccessControlAllowOrigin  string
 	AccessControlAllowHeaders string
 	AccessControlAllowMethods string
+	// 文件上传位置
+	UploadDestination string
 }
 
 // Config 数据库配置

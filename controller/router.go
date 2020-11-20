@@ -49,6 +49,10 @@ func SetRouters() {
 		{route: "export/yxkh/findAllEvalutionRank", handler: conmgr.ExportAllEvalutionRank},
 		// 查询半年、年度考核评分占比
 		{route: "visit/yxkh/scoreShare", handler: conmgr.ScoreShare},
+		// 导入群众评议
+		{route: "exec/yxkh/importPublicAssess", handler: conmgr.ImportPublicAssess},
+		// 导入加减分
+		{route: "exec/yxkh/importMarks", handler: conmgr.ImportMarks},
 		// ****************** 流程 *****************************
 		// 启动流程
 		{route: "exec/yxkh/startProcess", handler: conmgr.StartProcess},
@@ -75,8 +79,12 @@ func SetRouters() {
 		{route: "exec/yxkh/updateMark", handler: conmgr.UpdateMark},
 		// 合计加减分
 		{route: "visit/yxkh/sumMarks", handler: conmgr.SumMarks},
+		// ************************ 字典 *****************************
 		// 字典查询
 		{route: "visit/yxkh/findDict", handler: conmgr.FindallDict},
+		{route: "exec/yxkh/updateDict", handler: conmgr.UpdateDict},
+		{route: "exec/yxkh/addDict", handler: conmgr.AddDict},
+		{route: "exec/yxkh/delDict", handler: conmgr.DelDict},
 	}
 }
 

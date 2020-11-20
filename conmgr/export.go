@@ -5,6 +5,17 @@ import (
 	"github.com/mumushuiding/util"
 )
 
+// ImportPublicAssess 导入群众评议
+func ImportPublicAssess(c *model.Container) error {
+	return GetPublicAssessFromXlsx(c.File)
+}
+
+// ImportMarks 导入加减分
+func ImportMarks(c *model.Container) error {
+
+	return GetMarksFromXlsx(c.File)
+}
+
 // ExportAllEvalutionRank 导出半年、全年考核
 func ExportAllEvalutionRank(c *model.Container) error {
 	header := c.Body.Data[0].([]interface{})

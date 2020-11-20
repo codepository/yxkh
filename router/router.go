@@ -33,6 +33,9 @@ func setMux() {
 	Mux.HandleFunc("/api/v1/yxkh/getData", intercept(controller.GetData))
 	// ------------------ 导出数据 ------------------------
 	Mux.HandleFunc("/api/v1/yxkh/export", intercept(controller.Export))
+	// 导入
+	Mux.HandleFunc("/api/v1/yxkh/import", intercept(controller.Import))
+	Mux.HandleFunc("/api/v1/yxkh/import/publicAssessment", intercept(controller.ImportPublicAssessment))
 	// -------------------------- project ----------------
 	Mux.HandleFunc("/api/v1/yxkh/project/save", intercept(controller.SaveProject))
 	Mux.HandleFunc("/api/v1/yxkh/project/findall", intercept(controller.FindAllProject))

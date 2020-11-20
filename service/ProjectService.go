@@ -3,10 +3,9 @@ package service
 import (
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/mumushuiding/util"
 	"github.com/codepository/yxkh/model"
+	"github.com/mumushuiding/util"
 )
 
 // Project 项目
@@ -38,8 +37,8 @@ func (p *Project) Save() (int, error) {
 	var entity = model.ResProject{
 		ProjectContent: p.ProjectContent,
 		UserID:         p.UserID,
-		StartDate:      start,
-		EndDate:        end,
+		StartDate:      p.StartDate,
+		EndDate:        p.EndDate,
 		Progress:       p.Progress,
 	}
 	err = entity.Save()
@@ -94,16 +93,15 @@ func DelProjectByID(id int) error {
 
 // Update Update
 func (p *Project) Update() error {
-	var start, end time.Time
 	var err error
 	if len(p.StartDate) > 0 {
-		start, err = util.ParseDate(p.StartDate, util.YYYY_MM_DD)
+		_, err = util.ParseDate(p.StartDate, util.YYYY_MM_DD)
 		if err != nil {
 			return err
 		}
 	}
 	if len(p.EndDate) > 0 {
-		end, err = util.ParseDate(p.EndDate, util.YYYY_MM_DD)
+		_, err = util.ParseDate(p.EndDate, util.YYYY_MM_DD)
 		if err != nil {
 			return err
 		}
@@ -112,8 +110,8 @@ func (p *Project) Update() error {
 		ProjectID:      p.ProjectID,
 		ProjectContent: p.ProjectContent,
 		UserID:         p.UserID,
-		StartDate:      start,
-		EndDate:        end,
+		StartDate:      p.StartDate,
+		EndDate:        p.EndDate,
 		Progress:       p.Progress,
 	}
 	return entity.Update()

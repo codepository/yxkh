@@ -17,8 +17,8 @@ type ResMark struct {
 	MarkNumber  string    `gorm:"size:32;column:markNumber" json:"markNumber,omitempty"`
 	MarkReason  string    `gorm:"size:1000;column:markReason" json:"markReason,omitempty"`
 	Accordingly string    `gorm:"size:2000" json:"accordingly,omitempty"`
-	StartDate   time.Time `gorm:"column:startDate" json:"startDate,omitempty"`
-	EndDate     time.Time `gorm:"column:endDate" json:"endDate,omitempty"`
+	StartDate   string    `gorm:"column:startDate" json:"startDate,omitempty"`
+	EndDate     string    `gorm:"column:endDate" json:"endDate,omitempty"`
 	CreateTime  time.Time `gorm:"column:createTime" json:"createTime,omitempty"`
 	UserID      int       `gorm:"column:userId;size:32" json:"userId,omitempty"`
 	Username    string    `gorm:"column:username;size:32" json:"username,omitempty"`
@@ -51,16 +51,16 @@ func (m *ResMark) FromJSON(json map[string]interface{}) error {
 	m.MarkNumber = json["markNumber"].(string)
 	m.Accordingly = json["accordingly"].(string)
 	m.MarkReason = json["markReason"].(string)
-	start, err := util.ParseDate3(json["startDate"].(string))
+	_, err = util.ParseDate3(json["startDate"].(string))
 	if err != nil {
 		return err
 	}
-	m.StartDate = start
-	end, err := util.ParseDate3(json["endDate"].(string))
+	m.StartDate = json["startDate"].(string)
+	_, err = util.ParseDate3(json["endDate"].(string))
 	if err != nil {
 		return err
 	}
-	m.EndDate = end
+	m.EndDate = json["endDate"].(string)
 	if json["userId"] != nil {
 		uid, err := util.Interface2Int(json["userId"])
 		if err != nil {
@@ -86,7 +86,7 @@ func (m *ResMark) FromJSON(json map[string]interface{}) error {
 // FirstOrCreate 不存在就创建
 func (m *ResMark) FirstOrCreate() error {
 	m.CreateTime = time.Now()
-	return db.Where(ResMark{ProjectID: m.ProjectID, MarkReason: m.MarkReason, Accordingly: m.Accordingly}).Assign(m).FirstOrCreate(m).Error
+	return db.Where(ResMark{ProjectID: m.ProjectID, MarkReason: m.MarkReason, Accordingly: m.Accordingly}).Attrs(m).FirstOrCreate(m).Error
 }
 
 // DelMarkByIDs DelMarkByIDs

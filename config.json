@@ -20,6 +20,7 @@
   "TLSCrt": "server.crt",
   "TLSKey": "server.key",
   "AccessControlAllowOrigin": "*",
-  "AccessControlAllowHeaders": "*",
-  "AccessControlAllowMethods": "POST, GET, PUT, OPTIONS, DELETE, PATCH"
+  "AccessControlAllowHeaders": "*,method",
+  "AccessControlAllowMethods": "POST, GET, PUT, OPTIONS, DELETE, PATCH",
+  "UploadDestination":"upload"
 }

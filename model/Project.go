@@ -15,8 +15,8 @@ type ResProject struct {
 	// 一个中文长度为：3，英文为： 1
 	ProjectContent string     `gorm:"size:1000;column:projectContent" json:"projectContent"`
 	UserID         int        `gorm:"column:userId" json:"userId"`
-	StartDate      time.Time  `gorm:"column:startDate" json:"startDate"`
-	EndDate        time.Time  `gorm:"column:endDate" json:"endDate"`
+	StartDate      string     `gorm:"column:startDate" json:"startDate"`
+	EndDate        string     `gorm:"column:endDate" json:"endDate"`
 	Progress       string     `gorm:"size:1000" json:"progress"`
 	Createtime     time.Time  `gorm:"column:createTime" json:"createTime"`
 	Marks          []*ResMark `gorm:"FOREIGNKEY:res_mark_projectId_res_project_projectId_foreign;ASSOCIATION_FOREIGNKEY:projectId" json:"marks"`
@@ -35,18 +35,18 @@ func (p *ResProject) FromJSON(json map[string]interface{}) error {
 		p.Progress = json["progress"].(string)
 	}
 	if json["endDate"] != nil {
-		end, err := util.ParseDate3(json["endDate"].(string))
+		_, err := util.ParseDate3(json["endDate"].(string))
 		if err != nil {
 			return err
 		}
-		p.EndDate = end
+		p.EndDate = json["endDate"].(string)
 	}
 	if json["startDate"] != nil {
-		start, err := util.ParseDate3(json["startDate"].(string))
+		_, err := util.ParseDate3(json["startDate"].(string))
 		if err != nil {
 			return err
 		}
-		p.StartDate = start
+		p.StartDate = json["startDate"].(string)
 	}
 	if json["projectContent"] != nil {
 		p.ProjectContent = json["projectContent"].(string)
@@ -70,17 +70,18 @@ func (p *ResProject) FirstOrCreate() error {
 	if p.UserID == 0 {
 		return errors.New("userId 用户id不能为空")
 	}
-	if p.StartDate.IsZero() {
+	if len(p.StartDate) == 0 {
 		return errors.New("startDate 不能为空")
 	}
-	if p.EndDate.IsZero() {
+	if len(p.EndDate) == 0 {
 		return errors.New("endDate 不能为空")
 	}
 	p.Createtime = time.Now()
 	return db.Where(ResProject{
-		UserID: p.UserID, StartDate: p.StartDate, EndDate: p.EndDate,
+		StartDate: p.StartDate, EndDate: p.EndDate,
+		UserID:         p.UserID,
 		ProjectContent: p.ProjectContent,
-	}).Assign(p).FirstOrCreate(p).Error
+	}).Attrs(p).FirstOrCreate(p).Error
 }
 
 // UpdatesProject 只更新更改的字段
@@ -172,7 +173,7 @@ func (p *ResProject) Update() error {
 
 // AddProjectWithMark 添加项目并评分
 // startDate、endDate、userID 必不可少
-func AddProjectWithMark(startDate, endDate time.Time, projectContent string, userID int, checked, markNumber, markReason string) error {
+func AddProjectWithMark(startDate, endDate string, projectContent string, userID int, checked, markNumber, markReason string) error {
 	// 先添加项目，如果已经存在就不添加
 	p := &ResProject{
 		ProjectContent: projectContent,
