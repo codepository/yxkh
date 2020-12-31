@@ -41,8 +41,6 @@ func SetRouters() {
 		{route: "visit/yxkh/homedata", handler: conmgr.GetHomeData},
 		{route: "visit/yxkh/refreshhomedata", handler: conmgr.RefreshHomeData},
 		// ***************** 工作考核 ***************************
-		// 查询半年全年考核
-		{route: "visit/yxkh/findAllEvalution", handler: conmgr.FindAllEvalution},
 		// 半年和年度考核排行
 		{route: "visit/yxkh/findAllEvalutionRank", handler: conmgr.FindAllEvalutionRank},
 		// 导出半年和年度考核排行
@@ -63,8 +61,12 @@ func SetRouters() {
 		{route: "visit/yxkh/findFlowDatas", handler: conmgr.FindFlowDatas},
 		{route: "visit/yxkh/findAllProcess", handler: conmgr.FindallProcess},
 		// ****************** 项目 *****************************
+		// 查询加减分排行
+		{route: "visit/yxkh/findMarksRank", handler: conmgr.FindMarksRank},
 		// 项目和评分查询
 		{route: "visit/yxkh/findAllProjectWithMarks", handler: conmgr.FindAllProjectWithMarks},
+		// 查询所有加减分
+		{route: "visit/yxkh/findallMarks", handler: conmgr.FindAllMarks},
 		// 添加项目
 		{route: "exec/yxkh/addProject", handler: conmgr.AddProject},
 		// 删除项目

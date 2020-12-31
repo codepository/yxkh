@@ -129,7 +129,7 @@ func GetDataFromUserAPI(token, method string, params map[string]interface{}) (in
 }
 
 // StartFlowByToken 启动流程
-func StartFlowByToken(token string, params map[string]interface{}) (interface{}, error) {
+func StartFlowByToken(token string, params map[string]interface{}) ([]interface{}, error) {
 	method := "exec/flow/startByToken"
 	result, err := GetDataFromUserAPI(token, method, params)
 	if err != nil {
@@ -139,11 +139,12 @@ func StartFlowByToken(token string, params map[string]interface{}) (interface{},
 		return nil, nil
 	}
 	datas := result.([]interface{})
-	if datas[0] == nil {
-		return nil, nil
-	}
+	// if datas[0] == nil {
+	// 	return nil, nil
+	// }
 
-	return datas[0].(interface{}), nil
+	// return datas[0].(interface{}), nil
+	return datas, nil
 }
 
 // CompleteProcessByToken 审批流程
@@ -157,10 +158,6 @@ func CompleteProcessByToken(token string, params map[string]interface{}) ([]inte
 		return nil, nil
 	}
 	datas := result.([]interface{})
-	// if datas[0] == nil {
-	// 	return nil, nil
-	// }
-
 	return datas, nil
 
 }
@@ -229,6 +226,28 @@ func FindUsersUncompleteTask(taskname, start string) (interface{}, error) {
 func FindTaskCompleteRates(taskname, start string) (interface{}, error) {
 	method := "visit/task/completeRate"
 	params := map[string]interface{}{"task": taskname, "start": start, "max_results": 20}
+	return GetDataFromUserAPI("", method, params)
+}
+
+// FindTaskCompletedDescribe FindTaskCompletedDescribe
+// 任务人数，提交情况，审结情况
+func FindTaskCompletedDescribe(titleLike string) (interface{}, error) {
+	method := "visist/task/completedescribe"
+	params := map[string]interface{}{"titleLike": titleLike}
+	return GetDataFromUserAPI("", method, params)
+}
+
+// FindTaskRank 查询任务审批排行
+func FindTaskRank(titleLike string) (interface{}, error) {
+	method := "visit/task/userTaskRank"
+	params := map[string]interface{}{"titleLike": titleLike}
+	return GetDataFromUserAPI("", method, params)
+}
+
+// FindPersonApplyYxkh 查询已经提交或未提交流程的用户
+func FindPersonApplyYxkh(titleLike string, apply int) (interface{}, error) {
+	method := "visit/task/personApplyYxkh"
+	params := map[string]interface{}{"titleLike": titleLike, "apply": apply, "limit": 5}
 	return GetDataFromUserAPI("", method, params)
 }
 
@@ -307,6 +326,7 @@ func FindDepartAttribute(params map[string]interface{}) (int, error) {
 }
 
 // FindAllUsers 查询所有用户
+// 参数格式:{"body":{"metrics":"id,name","params":{"where":"id=1 and name='xx'","userid":"","name":"","departmentid":"","departmentname":"","mobile":"","email":"",}}}metrics为显示的字段,where不为空时忽略其它查询条件
 func FindAllUsers(fields string, params map[string]interface{}) ([]interface{}, error) {
 	var par model.Container
 	par.Body.Method = "visit/user/findAll"
@@ -358,8 +378,8 @@ func GetUseridAndDeptByMobileOrName(mobileOrName string) (int, int, error) {
 	return id, departmentid, nil
 }
 
-// GetUseridByMobileOrName 根据电话或名字查询用户
-func GetUseridByMobileOrName(mobileOrName string) (int, error) {
+// GetUseridAndNameByMobileOrName 根据电话或名字查询用户
+func GetUseridAndNameByMobileOrName(mobileOrName string) (int, string, error) {
 	fields := "id"
 	params := make(map[string]interface{})
 	// 判断是否是电话
@@ -370,18 +390,43 @@ func GetUseridByMobileOrName(mobileOrName string) (int, error) {
 	}
 	datas, err := FindAllUsers(fields, params)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	if len(datas) == 0 {
-		return 0, fmt.Errorf("用户【%s】不存在", mobileOrName)
+		return 0, "", fmt.Errorf("用户【%s】不存在", mobileOrName)
 	}
 	if len(datas) > 1 {
-		return 0, fmt.Errorf("用户【%s】存在重名,请用电话重试", mobileOrName)
+		return 0, "", fmt.Errorf("用户【%s】存在重名,请用电话重试", mobileOrName)
 	}
 	user := datas[0].(map[string]interface{})
 	id, err := util.Interface2Int(user["id"])
+	name := user["name"].(string)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
-	return id, nil
+	return id, name, nil
+}
+
+// FindAllUploadFiles 查询上传的文件
+func FindAllUploadFiles(filetype string, fields string) (interface{}, error) {
+	method := "visit/uploadfile/find"
+	params := map[string]interface{}{"filetype": filetype, "fields": fields}
+	return GetDataFromUserAPI("", method, params)
+}
+
+// FindAllTags 根据条件查询标签
+func FindAllTags(params map[string]interface{}) ([]interface{}, error) {
+	method := "visit/lable/find"
+	result, err := GetDataFromUserAPI("", method, params)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	datas := result.([]interface{})
+	if datas[0] == nil {
+		return nil, nil
+	}
+	return datas[0].([]interface{}), nil
 }

@@ -35,7 +35,6 @@ func setMux() {
 	Mux.HandleFunc("/api/v1/yxkh/export", intercept(controller.Export))
 	// 导入
 	Mux.HandleFunc("/api/v1/yxkh/import", intercept(controller.Import))
-	Mux.HandleFunc("/api/v1/yxkh/import/publicAssessment", intercept(controller.ImportPublicAssessment))
 	// -------------------------- project ----------------
 	Mux.HandleFunc("/api/v1/yxkh/project/save", intercept(controller.SaveProject))
 	Mux.HandleFunc("/api/v1/yxkh/project/findall", intercept(controller.FindAllProject))
@@ -43,7 +42,6 @@ func setMux() {
 	Mux.HandleFunc("/api/v1/yxkh/project/update", intercept(controller.UpdateProject))
 	// -------------------------- mark ---------------------
 	Mux.HandleFunc("/api/v1/yxkh/mark/save", intercept(controller.SaveMark))
-	Mux.HandleFunc("/api/v1/yxkh/mark/findall", intercept(controller.FindAllMark))
 	Mux.HandleFunc("/api/v1/yxkh/mark/del", intercept(controller.DelMark))
 	Mux.HandleFunc("/api/v1/yxkh/mark/update", intercept(controller.UpdateMark))
 	Mux.HandleFunc(fmt.Sprintf("%s/mark/findMarkRankForHome", prefixV1), intercept(controller.FindMarkRankForHome))

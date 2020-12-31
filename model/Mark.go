@@ -12,10 +12,12 @@ import (
 
 // ResMark ResMark
 type ResMark struct {
-	MarkID      int       `gorm:"primary_key;column:markId" json:"markId,omitempty"`
-	ProjectID   int       `gorm:"column:projectId" json:"projectId,omitempty"`
-	MarkNumber  string    `gorm:"size:32;column:markNumber" json:"markNumber,omitempty"`
-	MarkReason  string    `gorm:"size:1000;column:markReason" json:"markReason,omitempty"`
+	MarkID     int    `gorm:"primary_key;column:markId" json:"markId,omitempty"`
+	ProjectID  int    `gorm:"column:projectId" json:"projectId,omitempty"`
+	MarkNumber string `gorm:"size:32;column:markNumber" json:"markNumber,omitempty"`
+	// MarkReason 加分原因
+	MarkReason string `gorm:"size:1000;column:markReason" json:"markReason,omitempty"`
+	// Accordingly 加分依据的规则
 	Accordingly string    `gorm:"size:2000" json:"accordingly,omitempty"`
 	StartDate   string    `gorm:"column:startDate" json:"startDate,omitempty"`
 	EndDate     string    `gorm:"column:endDate" json:"endDate,omitempty"`
@@ -101,33 +103,40 @@ func UpdatesMark(id int, params interface{}) error {
 }
 
 // FindAllMark FindAllMark
-func FindAllMark(query interface{}, values ...interface{}) ([]*ResMark, error) {
+func FindAllMark(fields string, query interface{}, values ...interface{}) ([]*ResMark, error) {
 
 	var datas []*ResMark
-	err := db.Where(query, values...).Find(&datas).Error
+	if len(fields) == 0 {
+		fields = "*"
+	}
+	err := db.Select(fields).Where(query, values...).Order("createTime desc").Find(&datas).Error
 	// err := db.Raw(rawSQL, values...).Scan(&datas).Error
 	return datas, err
 }
 
-// FindAllMarkPaged FindAllMarkPaged
-func FindAllMarkPaged(pageIndex, pageSize int, sql string) ([]*ResMark, int, error) {
+// FindAllMarkBySQL FindAllMarkBySQL
+func FindAllMarkBySQL(sql string) ([]*ResMark, error) {
+
 	var datas []*ResMark
-	var count int
-	if pageIndex == 0 {
-		pageIndex = 1
+
+	err := db.Raw(sql).Scan(&datas).Error
+	return datas, err
+}
+
+// FindAllMarkPaged FindAllMarkPaged
+func FindAllMarkPaged(fields string, limit, offset int, order string, query interface{}) ([]*ResMark, error) {
+	var datas []*ResMark
+	if limit == 0 {
+		limit = 20
 	}
-	if pageSize == 0 {
-		pageSize = 10
+	if len(order) == 0 {
+		order = "createTime desc"
 	}
-	err := db.Where(sql).Offset((pageIndex - 1) * pageSize).Limit(pageSize).Find(&datas).Error
+	err := db.Where(query).Limit(limit).Offset(offset).Order(order).Find(&datas).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, 0, err
+		return make([]*ResMark, 0), err
 	}
-	err = db.Model(&ResMark{}).Where(sql).Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-	return datas, count, nil
+	return datas, nil
 }
 
 // Save Save
@@ -196,4 +205,16 @@ func SumMarks(startDate, endDate string, query interface{}, values ...interface{
 	err := db.Select("sum(markNumber) as markNumber").Where(query, values...).Where("startDate>=? and endDate<=?", startDate, endDate).
 		Find(&mark).Error
 	return mark.MarkNumber, err
+}
+
+// FindMarksRankPaged 分页查询加减分排行
+func FindMarksRankPaged(limit, offset int, query interface{}) ([]*ResMark, error) {
+	var datas []*ResMark
+	err := db.Select("userId,username,ifnull(round(sum(markNumber),2),0) as markNumber").Where(query).
+		Group("userId,username").Order("markNumber desc").
+		Limit(limit).Offset(offset).Find(&datas).Error
+	if err != nil && err == gorm.ErrRecordNotFound {
+		return make([]*ResMark, 0), nil
+	}
+	return datas, err
 }

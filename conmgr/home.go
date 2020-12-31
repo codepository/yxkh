@@ -6,13 +6,25 @@ import (
 	"time"
 
 	"github.com/codepository/yxkh/model"
-	"github.com/mumushuiding/util"
 )
 
 // RefreshHomeData 刷新首页数据
 func RefreshHomeData(c *model.Container) error {
 	// 返回字段设置
-	c.Body.Fields = []string{"上月月度考核排名前10", "提交率", "月度考核未交清单", "加减分排行", "年度考评排行", "半年考核排行", "一线考核嘉奖通报", "一线考核相关文件", "考核组"}
+	c.Body.Fields = []string{"上月月度考核排名前10", "月度考核提交情况", "任务审批数排行", "月度考核未交清单", "加减分排行", "年度考评排行", "半年考核排行", "一线考核嘉奖通报", "一线考核相关文件", "考核组"}
+	// 查询考核组
+	var assessGroup []string
+	datas, err := FindAllTags(map[string]interface{}{"field": "tagName", "type": "考核组"})
+	if err != nil {
+		return fmt.Errorf("查询标签:%s", err.Error())
+	}
+	if len(datas) == 0 {
+		return fmt.Errorf("查询标签:不存在type为[考核组]的标签")
+	}
+	for _, g := range datas {
+		x := g.(map[string]interface{})
+		assessGroup = append(assessGroup, x["tagName"].(string))
+	}
 	// 上月月度考核排名前10
 	usernames, err := FindLastMonthMarkRankTop10()
 	if err != nil {
@@ -23,23 +35,38 @@ func RefreshHomeData(c *model.Container) error {
 	} else {
 		c.Body.Data = append(c.Body.Data, usernames)
 	}
-	// 提交率
 	now := time.Now()
-	startDate := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Local().Location())
-	start := util.FormatDate3(startDate)
-	completeRates, err := FindTaskCompleteRates("一线考核", start)
+	year := now.Year()
+	month := now.Month()
+	if month == 1 {
+		month = 12
+		year--
+	}
+	month--
+	titleLike := fmt.Sprintf("%d年%d月份-月度考核", year, month)
+	// 上个月一线考核提交情况
+	completedDescribe, err := FindTaskCompletedDescribe(titleLike)
 	if err != nil {
 		return fmt.Errorf("提交率:%s", err.Error())
 	}
-	if completeRates == nil {
+	if completedDescribe == nil {
 		c.Body.Data = append(c.Body.Data, []interface{}{})
 
 	} else {
-		c.Body.Data = append(c.Body.Data, completeRates)
+		c.Body.Data = append(c.Body.Data, completedDescribe)
 	}
-
-	// 月度考核未交清单,只显示30个
-	users, err := FindUsersUncompleteTask("一线考核", start)
+	// 上月月度考核未审批任务排行和已审批任务排行
+	taskRank, err := FindTaskRank(titleLike)
+	if err != nil {
+		return fmt.Errorf("月度考核审批排行:%s", err.Error())
+	}
+	if taskRank == nil {
+		c.Body.Data = append(c.Body.Data, []interface{}{})
+	} else {
+		c.Body.Data = append(c.Body.Data, taskRank)
+	}
+	// 未提交一线考核的员工
+	users, err := FindPersonApplyYxkh(titleLike, 0)
 	if err != nil {
 		return fmt.Errorf("月度考核未交清单:%s", err.Error())
 	}
@@ -49,32 +76,48 @@ func RefreshHomeData(c *model.Container) error {
 		c.Body.Data = append(c.Body.Data, users)
 	}
 	// 加减分排行
-	assessGroup := []string{"第一考核组成员", "第二考核组成员", "第三考核组成员", "第四考核组成员"}
 	userMarks, err := FindMarkRankCurrentYearByGroup(assessGroup, [][]int{{1, 2}, {0}}, []string{"项目舞台"})
 	if err != nil {
 		return fmt.Errorf("加减分排行:%s", err.Error())
 	}
 	c.Body.Data = append(c.Body.Data, userMarks)
 	// 半年考核排行
-	c.Body.Data = append(c.Body.Data, []interface{}{})
+	month = now.Month()
+	year = now.Year()
+	sparation1 := ""
+	sparation2 := ""
+	if month > 6 {
+		sparation1 = fmt.Sprintf("%d年-半年考核", year)
+	} else {
+		sparation1 = fmt.Sprintf("%d年-半年考核", year-1)
+	}
+	sparation2 = fmt.Sprintf("%d年-年度考核", year-1)
+	halfyear, err := model.FindAllEvaluation("department,sparation,result,publicEvaluation,leadershipEvaluation,eId,uid,username,totalMark,marks,overseerEvaluation", "res_evaluation.totalMark+0 desc,res_evaluation.marks+0 desc", 20, 0, map[string]interface{}{"sparation": sparation1})
+	if err != nil {
+		return fmt.Errorf("查询半年考核:%s", err.Error())
+	}
+	c.Body.Data = append(c.Body.Data, halfyear)
 	// 年度考评排行
-	c.Body.Data = append(c.Body.Data, []interface{}{})
+	fullyear, err := model.FindAllEvaluation("department,sparation,result,publicEvaluation,leadershipEvaluation,eId,uid,username,totalMark,marks,overseerEvaluation", "res_evaluation.totalMark+0 desc,res_evaluation.marks+0 desc", 20, 0, map[string]interface{}{"sparation": sparation2})
+	if err != nil {
+		return fmt.Errorf("查询年度考核:%s", err.Error())
+	}
+	c.Body.Data = append(c.Body.Data, fullyear)
 	// 一线考核嘉奖通报
-	uploadfiles, err := FindAllUploadfiles(map[string]interface{}{"filetype": "remarks"}, 10, 0)
-	if len(uploadfiles) == 0 {
-		c.Body.Data = append(c.Body.Data, []interface{}{})
-	} else {
-		c.Body.Data = append(c.Body.Data, uploadfiles)
+	uploadfiles, err := FindAllUploadfiles("remarks", "id,filename,uid,username")
+	if err != nil {
+		return fmt.Errorf("查询嘉奖通报:%s", err.Error())
 	}
+	c.Body.Data = append(c.Body.Data, uploadfiles)
 	// 一线考核相关文件
-	public, err := FindAllUploadfiles(map[string]interface{}{"filetype": "public"}, 10, 0)
-	if len(uploadfiles) == 0 {
-		c.Body.Data = append(c.Body.Data, []interface{}{})
-	} else {
-		c.Body.Data = append(c.Body.Data, public)
+	public, err := FindAllUploadfiles("public", "id,filename,uid,username")
+	if err != nil {
+		return fmt.Errorf("查询公共文件:%s", err.Error())
 	}
+	c.Body.Data = append(c.Body.Data, public)
 	// 一线考核组
 	c.Body.Data = append(c.Body.Data, assessGroup)
+	Conmgr.cacheMap[HomeDataCache] = c.Body.Data
 	return nil
 }
 

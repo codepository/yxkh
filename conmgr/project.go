@@ -49,6 +49,7 @@ func UpdateProject(c *model.Container) error {
 }
 
 // DelProject 删除项目
+// 删除逻辑:已经结束即completed=1的项目不可删除
 func DelProject(c *model.Container) error {
 	errstr := `参数格式:{"body":"params":{"ids":[1,3]}} ids是要删除的评分`
 	if len(c.Body.Params) == 0 || c.Body.Params["ids"] == nil {
@@ -113,11 +114,15 @@ func CheckProjectByProcessInstanceID(processInstanceID string) (*ReExecData, err
 	if err != nil {
 		return red, fmt.Errorf("查询月度考核失败:%s", err.Error())
 	}
-	query := map[string]interface{}{"startDate": util.FormatDate3(e.StartDate), "endDate": util.FormatDate3(e.EndDate), "userId": e.UID}
+	query := map[string]interface{}{"startDate": e.StartDate, "endDate": e.EndDate, "userId": e.UID}
 	values := map[string]interface{}{"checked": "1"}
 	err = model.UpdateMarks(query, values)
 	if err != nil {
 		return red, fmt.Errorf("使加减分生效失败:%s", err.Error())
+	}
+	err = model.UpdatesProject(query, map[string]interface{}{"completed": "1"})
+	if err != nil {
+		return red, fmt.Errorf("设置项目结束失败:%s", err.Error())
 	}
 	return nil, nil
 }

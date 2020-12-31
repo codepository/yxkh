@@ -46,21 +46,6 @@ func SaveMark(w http.ResponseWriter, r *http.Request) {
 	util.Response(w, fmt.Sprintf("%d", id), true)
 }
 
-// FindAllMark FindAllMark
-func FindAllMark(w http.ResponseWriter, r *http.Request) {
-	var receiver = service.MarkReceiver{}
-	if err := util.GetBody(&receiver, w, r); err != nil {
-		util.ResponseErr(w, err)
-		return
-	}
-	data, err := receiver.FindAll()
-	if err != nil {
-		util.ResponseErr(w, err)
-		return
-	}
-	fmt.Fprintf(w, data)
-}
-
 // DelMark DelMark
 func DelMark(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {

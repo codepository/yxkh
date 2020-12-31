@@ -1,7 +1,6 @@
 package conmgr
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -14,68 +13,103 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
-// FindAllEvalution 查询所有申请表
-func FindAllEvalution(c *model.Container) error {
-	errStr := fmt.Sprintf(`参数格式:{"body":{"fields":["eId,marks","2020年上半年-半年考核"],"max_results":10,"start_index":0,"order":"marks desc"}}`)
-	if c.Body.Fields == nil || len(c.Body.Fields) < 2 {
-		return errors.New(errStr)
-	}
-
-	e, total, err := model.FindAllEvaluationPagedByType(c.Body.Fields[0], c.Body.MaxResults, c.Body.StartIndex, c.Body.Order, c.Body.Fields[1])
-	if err != nil {
-		return err
-	}
-	c.Body.Data = append(c.Body.Data, e)
-	c.Body.Total = total
-	return nil
-}
-
 // FindAllEvalutionRank 半年和年度考核排行
 func FindAllEvalutionRank(c *model.Container) error {
-	errStr := fmt.Sprintf(`参数格式:{"body":{"fields":["2020年上半年-半年考核"],"max_results":10,"start_index":0,"order":"marks desc","metrics":"第一考核组成员,第二考核组成员","username":"小明"}} metrics为用户标签,可以为空;username可以为空`)
-	if c.Body.Fields == nil || len(c.Body.Fields) < 1 {
-		return errors.New(errStr)
+	errStr := fmt.Sprintf(`参数格式:{"body":{"params":{"fields":"","tags":"第一考核组成员,第二考核组成员","departments":"A部门,B部门","username":"张三","limit":20,"offset":0,"sparation":"2020年-半年考核"}}} tags 为用户标签,username按用户名模糊查询,fields为查询字段,sparation为模糊查询`)
+	var err error
+	if len(c.Body.Params) == 0 {
+		return fmt.Errorf(errStr)
 	}
-	if len(c.Body.Fields[0]) == 0 {
-		return errors.New(errStr)
+	order := "res_evaluation.totalMark+0 desc,res_evaluation.marks+0 desc"
+	limit := 20
+	if c.Body.Params["limit"] != nil {
+		limit, err = util.Interface2Int(c.Body.Params["limit"])
+		if err != nil {
+			return fmt.Errorf("limit 转数字:%s", err.Error())
+		}
 	}
-	fields := "process.userId,process.username,process.deptName,res_evaluation.marks,publicEvaluation,leadershipEvaluation,overseerEvaluation,totalMark,result,startDate,endDate"
-	c.Body.Order = "totalMark+0 desc,marks+0 desc"
-	c.Body.Data = c.Body.Data[:0]
-	if len(c.Body.UserName) != 0 { // 用户名不为空
-		e, total, err := model.FindAllEvaluationPagedByTypeAndUsername(fields, c.Body.MaxResults, c.Body.StartIndex, c.Body.Order, c.Body.Fields[0], c.Body.UserName)
+	offset := 0
+	if c.Body.Params["offset"] != nil {
+		offset, err = util.Interface2Int(c.Body.Params["offset"])
 		if err != nil {
-			return err
+			return fmt.Errorf("offset 转数字:%s", err.Error())
 		}
-		c.Body.Data = append(c.Body.Data, e)
-		c.Body.Total = total
-	} else if len(c.Body.Metrics) != 0 { // 即用户标签不为空
-		userids, err := FindUseridsByTags(strings.Split(c.Body.Metrics, ","), "")
-		if len(userids) == 0 {
-			c.Body.Data = append(c.Body.Data, []interface{}{})
-			c.Body.Total = 0
-			return nil
+	}
+	fields := ""
+	if c.Body.Params["fields"] != nil {
+		fields = c.Body.Params["fields"].(string)
+	}
+	if c.Body.Params["order"] != nil {
+		order = c.Body.Params["order"].(string)
+	}
+	var usersqlbuff strings.Builder
+	var sqlbuff strings.Builder
+	if c.Body.Params["tags"] != nil {
+		tstr, ok := c.Body.Params["tags"].(string)
+		if !ok {
+			return fmt.Errorf("tags必须为字符串如'第一考核组成员,第二考核组成员,管理员'")
 		}
+		tarr := strings.Split(tstr, ",")
+		tres := ""
+		for _, t := range tarr {
+			tres += fmt.Sprintf(",'%s'", t)
+		}
+		usersqlbuff.WriteString(fmt.Sprintf("and id in (select uId from weixin_oauser_taguser where tagId in (select id from weixin_oauser_tag where tagName in (%s))) ", tres[1:]))
+	}
+	if c.Body.Params["departments"] != nil {
+		dstr, ok := c.Body.Params["departments"].(string)
+		if !ok {
+			return fmt.Errorf("departments 必须为字符串如'A部门,B部门'")
+		}
+		darr := strings.Split(dstr, ",")
+		dres := ""
+		for _, d := range darr {
+			dres += fmt.Sprintf(",'%s'", d)
+		}
+		if len(dres) > 0 {
+			usersqlbuff.WriteString(fmt.Sprintf("and departmentname in (%s) ", dres[1:]))
+		}
+	}
+	if c.Body.Params["username"] != nil {
+		name, ok := c.Body.Params["username"].(string)
+		if !ok {
+			return fmt.Errorf("username 必须为字符串")
+		}
+		usersqlbuff.WriteString(fmt.Sprintf("and name like '%s'", "%"+name+"%"))
+	}
+	// 查询用户id
+	if usersqlbuff.Len() != 0 {
+		users, err := FindAllUsers("id", map[string]interface{}{"where": usersqlbuff.String()[4:]})
 		if err != nil {
-			return fmt.Errorf("根据标签【%s】查询用户id时报错:%s", c.Body.Metrics, err.Error())
+			return fmt.Errorf("从fznewsuser微服务查询用户:%s", err.Error())
 		}
-
-		e, total, err := model.FindAllEvaluationPagedByTypeAndUserids(fields, c.Body.MaxResults, c.Body.StartIndex, c.Body.Order, c.Body.Fields[0], userids)
-		if err != nil {
-			return err
+		ids := ""
+		for _, u := range users {
+			umap := u.(map[string]interface{})
+			id, err := util.Interface2Int(umap["id"])
+			if err != nil {
+				return err
+			}
+			ids += fmt.Sprintf(",%d", id)
 		}
-		c.Body.Data = append(c.Body.Data, e)
-		c.Body.Total = total
-
-	} else {
-		e, total, err := model.FindAllEvaluationPagedByType(fields, c.Body.MaxResults, c.Body.StartIndex, c.Body.Order, c.Body.Fields[0])
-		if err != nil {
-			return err
+		if len(ids) > 0 {
+			sqlbuff.WriteString(fmt.Sprintf("and uid in (%s) ", ids[1:]))
 		}
-		c.Body.Data = append(c.Body.Data, e)
-		c.Body.Total = total
+	}
+	where := ""
+	if c.Body.Params["sparation"] != nil {
+		sqlbuff.WriteString(fmt.Sprintf("and sparation like '%s' ", "%"+c.Body.Params["sparation"].(string)+"%"))
+	}
+	if sqlbuff.Len() != 0 {
+		where = sqlbuff.String()[4:]
 	}
 
+	// 根据用户id查询考核表
+	datas, err := model.FindAllEvaluation(fields, order, limit, offset, where)
+	if err != nil {
+		return fmt.Errorf("查询考核表:%s", err.Error())
+	}
+	c.Body.Data = append(c.Body.Data, datas)
 	return nil
 }
 
@@ -84,6 +118,11 @@ func RemarkEvaluationByProcessInstanceID(processInstanceID string) (*ReExecData,
 	red := &ReExecData{Key: processInstanceID, FuncName: "RemarkEvaluationByProcessInstanceID"}
 	// 查询对应的月度考核
 	e, err := model.FindSingleEvaluation(processInstanceID)
+	users, err := FindAllUsers("name", map[string]interface{}{"id": e.UID})
+	if err != nil {
+		return red, fmt.Errorf("查询用户名:%s", err.Error())
+	}
+	user := users[0].(map[string]interface{})
 	if err != nil {
 		return red, fmt.Errorf("查询月度考核失败:%s", err.Error())
 	}
@@ -107,7 +146,7 @@ func RemarkEvaluationByProcessInstanceID(processInstanceID string) (*ReExecData,
 		return red, fmt.Errorf("查询字典【%s】失败:%s", dicName, err.Error())
 	}
 	// 添加加减分
-	err = model.AddProjectWithMark(util.FormatDate3(e.StartDate), util.FormatDate3(e.EndDate), dicName, e.UID, "1", dic[0].Value, dicName)
+	err = model.AddProjectWithMark(e.StartDate, e.EndDate, dicName, e.UID, "1", dic[0].Value, dicName, user["name"].(string))
 	if err != nil {
 		return red, fmt.Errorf("月度考核自动加分失败:%s", err.Error())
 	}
@@ -172,6 +211,8 @@ func GetMarksFromXlsx(file *os.File) error {
 	buff.WriteString("可重复导入,请保留原始数据\n")
 	// 用户id
 	idmap := make(map[string]int)
+	// 用户名
+	usernameMap := make(map[string]string)
 	// 读取数据
 	xlFile, err := xlsx.OpenFile(file.Name())
 	if err != nil {
@@ -222,12 +263,13 @@ func GetMarksFromXlsx(file *os.File) error {
 			buff.WriteString(fmt.Sprintf("第%d行第6列必须为数字:%s\n", i+1, err.Error()))
 		}
 		// 第1列必须是电话号码或者用户名，当存在重名时报错
-		id, err := GetUseridByMobileOrName(r[0])
+		id, name, err := GetUseridAndNameByMobileOrName(r[0])
 		if err != nil {
 			haserr = true
 			buff.WriteString(fmt.Sprintf("第%d行第1列用户有误:%s\n", i+1, err.Error()))
 		}
 		idmap[r[0]] = id
+		usernameMap[r[0]] = name
 	}
 	if haserr {
 		return fmt.Errorf(buff.String())
@@ -237,7 +279,7 @@ func GetMarksFromXlsx(file *os.File) error {
 		if i == 0 {
 			continue
 		}
-		err = model.AddProjectWithMark(r[1], r[2], r[3], idmap[r[0]], "0", r[5], r[4])
+		err = model.AddProjectWithMark(r[1], r[2], r[3], idmap[r[0]], "0", r[5], r[4], usernameMap[r[0]])
 		if err != nil {
 			haserr = true
 			buff.WriteString(fmt.Sprintf("第%d行导入数据有误:%s\n", i+1, err.Error()))
@@ -301,6 +343,7 @@ func GetPublicAssessFromXlsx(file *os.File) error {
 			buff.WriteString(fmt.Sprintf("第%d行第2列:%s\n", i+1, err.Error()))
 		}
 		// 第1列必须是电话号码或者用户名，当存在重名时报错
+
 		id, did, err := GetUseridAndDeptByMobileOrName(r[0])
 		if err != nil {
 			haserr = true
@@ -349,7 +392,7 @@ func GetPublicAssessFromXlsx(file *os.File) error {
 		// 群众评分
 		e.PublicEvaluation = r[13]
 		// 考核量化分重新计算
-		total, err := model.SumMarks(e.StartDate.String(), e.EndDate.String(), map[string]interface{}{"userId": idmap[r[0]], "checked": 1})
+		total, err := model.SumMarks(e.StartDate, e.EndDate, map[string]interface{}{"userId": idmap[r[0]], "checked": 1})
 		if err != nil {
 			buff.WriteString(fmt.Sprintf("第%d行用户[%s]计算考核量化分失败:%s,请稍后再试\n", i+1, r[0], err.Error()))
 		}

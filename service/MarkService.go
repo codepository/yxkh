@@ -77,14 +77,6 @@ func (r *MarkReceiver) prepareData() (*model.ResMark, error) {
 	return &result, nil
 }
 
-// FindAll FindAll
-func (r *MarkReceiver) FindAll() (string, error) {
-	datas, count, err := model.FindAllMarkPaged(r.PageIndex, r.PageSize, r.getSQL())
-	if err != nil {
-		return "", err
-	}
-	return util.ToPageJSON(datas, count, r.PageIndex, r.PageSize)
-}
 func (r *MarkReceiver) getSQL() string {
 	var sql string
 	if len(r.EndDate) > 0 {

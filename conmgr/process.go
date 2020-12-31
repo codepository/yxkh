@@ -61,7 +61,7 @@ func StartProcess(c *model.Container) error {
 	if err != nil {
 		return fmt.Errorf("启动流程失败:%s", err.Error())
 	}
-	f := flow.(map[string]interface{})
+	f := flow[0].(map[string]interface{})
 	flowdata := f["data"].(map[string]interface{})
 	if flowdata["ThirdNo"] == nil && len(flowdata["ThirdNo"].(string)) == 0 {
 		return fmt.Errorf("流程返回数据ThirdNo为空")
@@ -83,8 +83,6 @@ func StartProcess(c *model.Container) error {
 			commit = false
 		}
 	}
-	// log.Println("perform:", c.Body.Params["perform"])
-	// log.Println("commit:", commit)
 	c.Body.Data = append(c.Body.Data, f["data"])
 	if commit {
 
@@ -96,6 +94,8 @@ func StartProcess(c *model.Container) error {
 			return fmt.Errorf("流程提交失败:%s", err.Error())
 		}
 		c.Body.Data = append(c.Body.Data, result...)
+	} else {
+		c.Body.Data = append(c.Body.Data, flow[1])
 	}
 
 	return nil
@@ -233,6 +233,15 @@ func FirstOrCreateFlowData(businessType string, data map[string]interface{}) err
 		break
 	// 责任清单
 	case Zrqd:
+		e := model.ResEvaluation{}
+		err := e.FromMap(data)
+		if err != nil {
+			return err
+		}
+		err = e.FirstOrCreate()
+		if err != nil {
+			return err
+		}
 		break
 	default:
 		return fmt.Errorf("流程类型[%s]不存在", businessType)
@@ -313,6 +322,7 @@ func FindFlowDatas(c *model.Container) error {
 		break
 	// 责任清单
 	case Zrqd:
+		data, err = model.FindSingleEvaluation(c.Body.Params["processInstanceId"])
 		break
 	default:
 		return fmt.Errorf("流程类型[%s]不存在", businessType)

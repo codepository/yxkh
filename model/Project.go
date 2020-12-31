@@ -19,6 +19,7 @@ type ResProject struct {
 	EndDate        string     `gorm:"column:endDate" json:"endDate"`
 	Progress       string     `gorm:"size:1000" json:"progress"`
 	Createtime     time.Time  `gorm:"column:createTime" json:"createTime"`
+	Completed      string     `json:"completed"`
 	Marks          []*ResMark `gorm:"FOREIGNKEY:res_mark_projectId_res_project_projectId_foreign;ASSOCIATION_FOREIGNKEY:projectId" json:"marks"`
 }
 
@@ -84,24 +85,29 @@ func (p *ResProject) FirstOrCreate() error {
 	}).Attrs(p).FirstOrCreate(p).Error
 }
 
-// UpdatesProject 只更新更改的字段
-func UpdatesProject(id int, params map[string]interface{}) error {
-	if params["startDate"] != nil {
-		start, err := util.ParseDate3(params["startDate"].(string))
-		if err != nil {
-			return err
-		}
-		params["startDate"] = start
-	}
-	if params["endDate"] != nil {
-		end, err := util.ParseDate3(params["endDate"].(string))
-		if err != nil {
-			return err
-		}
-		params["endDate"] = end
-	}
-	return db.Model(&ResProject{ProjectID: id}).Updates(params).Error
+// UpdatesProject 更新值
+func UpdatesProject(query interface{}, values interface{}) error {
+	return db.Model(&ResProject{}).Where(query).Updates(values).Error
 }
+
+// UpdatesProject 只更新更改的字段
+// func UpdatesProject(id int, params map[string]interface{}) error {
+// 	if params["startDate"] != nil {
+// 		start, err := util.ParseDate3(params["startDate"].(string))
+// 		if err != nil {
+// 			return err
+// 		}
+// 		params["startDate"] = start
+// 	}
+// 	if params["endDate"] != nil {
+// 		end, err := util.ParseDate3(params["endDate"].(string))
+// 		if err != nil {
+// 			return err
+// 		}
+// 		params["endDate"] = end
+// 	}
+// 	return db.Model(&ResProject{ProjectID: id}).Updates(params).Error
+// }
 
 // FindProjectWithMarks 查询项目和分数
 func FindProjectWithMarks(query interface{}, values ...interface{}) ([]*ResProject, error) {
@@ -113,7 +119,7 @@ func FindProjectWithMarks(query interface{}, values ...interface{}) ([]*ResProje
 	}
 	if len(projects) > 0 {
 		for _, p := range projects {
-			marks, err := FindAllMark("projectId=?", p.ProjectID)
+			marks, err := FindAllMark("", "projectId=?", p.ProjectID)
 			if err != nil {
 				return nil, err
 			}
@@ -173,13 +179,14 @@ func (p *ResProject) Update() error {
 
 // AddProjectWithMark 添加项目并评分
 // startDate、endDate、userID 必不可少
-func AddProjectWithMark(startDate, endDate string, projectContent string, userID int, checked, markNumber, markReason string) error {
+func AddProjectWithMark(startDate, endDate string, projectContent string, userID int, checked, markNumber, markReason, username string) error {
 	// 先添加项目，如果已经存在就不添加
 	p := &ResProject{
 		ProjectContent: projectContent,
 		StartDate:      startDate,
 		EndDate:        endDate,
 		UserID:         userID,
+		Completed:      checked,
 	}
 	err := p.FirstOrCreate()
 	if err != nil {
@@ -187,13 +194,15 @@ func AddProjectWithMark(startDate, endDate string, projectContent string, userID
 	}
 	// 为项目添加评分，如果已经存在就不添加
 	mark := &ResMark{
-		ProjectID:  p.ProjectID,
-		UserID:     userID,
-		Checked:    checked,
-		MarkReason: markReason,
-		MarkNumber: markNumber,
-		StartDate:  startDate,
-		EndDate:    endDate,
+		ProjectID:   p.ProjectID,
+		UserID:      userID,
+		Checked:     checked,
+		MarkReason:  projectContent,
+		Accordingly: markReason,
+		MarkNumber:  markNumber,
+		StartDate:   startDate,
+		EndDate:     endDate,
+		Username:    username,
 	}
 	err = mark.FirstOrCreate()
 	if err != nil {
