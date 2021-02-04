@@ -201,7 +201,7 @@ func checkImportPublicAssessDate(processName string) error {
 }
 
 // GetMarksFromXlsx 从xlsx文件读取加减分
-func GetMarksFromXlsx(file *os.File) error {
+func GetMarksFromXlsx(file *os.File, checked string) error {
 	if file == nil {
 		return fmt.Errorf("file值为nil")
 	}
@@ -279,7 +279,7 @@ func GetMarksFromXlsx(file *os.File) error {
 		if i == 0 {
 			continue
 		}
-		err = model.AddProjectWithMark(r[1], r[2], r[3], idmap[r[0]], "0", r[5], r[4], usernameMap[r[0]])
+		err = model.AddProjectWithMark(r[1], r[2], r[3], idmap[r[0]], checked, r[5], r[4], usernameMap[r[0]])
 		if err != nil {
 			haserr = true
 			buff.WriteString(fmt.Sprintf("第%d行导入数据有误:%s\n", i+1, err.Error()))

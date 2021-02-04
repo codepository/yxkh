@@ -90,25 +90,6 @@ func UpdatesProject(query interface{}, values interface{}) error {
 	return db.Model(&ResProject{}).Where(query).Updates(values).Error
 }
 
-// UpdatesProject 只更新更改的字段
-// func UpdatesProject(id int, params map[string]interface{}) error {
-// 	if params["startDate"] != nil {
-// 		start, err := util.ParseDate3(params["startDate"].(string))
-// 		if err != nil {
-// 			return err
-// 		}
-// 		params["startDate"] = start
-// 	}
-// 	if params["endDate"] != nil {
-// 		end, err := util.ParseDate3(params["endDate"].(string))
-// 		if err != nil {
-// 			return err
-// 		}
-// 		params["endDate"] = end
-// 	}
-// 	return db.Model(&ResProject{ProjectID: id}).Updates(params).Error
-// }
-
 // FindProjectWithMarks 查询项目和分数
 func FindProjectWithMarks(query interface{}, values ...interface{}) ([]*ResProject, error) {
 	var projects []*ResProject
@@ -177,6 +158,22 @@ func (p *ResProject) Update() error {
 	return db.Model(&ResProject{}).Updates(p).Error
 }
 
+// FindSingleProject 查询项目
+func FindSingleProject(query interface{}) (*ResProject, error) {
+	var datas []*ResProject
+	err := db.Where(query).Find(&datas).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("查询project:%s", err.Error())
+	}
+	if len(datas) > 0 {
+		datas[0].StartDate = datas[0].StartDate[0:10]
+		datas[0].EndDate = datas[0].EndDate[0:10]
+		return datas[0], nil
+	}
+	return nil, nil
+
+}
+
 // AddProjectWithMark 添加项目并评分
 // startDate、endDate、userID 必不可少
 func AddProjectWithMark(startDate, endDate string, projectContent string, userID int, checked, markNumber, markReason, username string) error {
@@ -186,27 +183,49 @@ func AddProjectWithMark(startDate, endDate string, projectContent string, userID
 		StartDate:      startDate,
 		EndDate:        endDate,
 		UserID:         userID,
-		Completed:      checked,
 	}
-	err := p.FirstOrCreate()
+	// 查询旧的项目
+	oldPro, err := FindSingleProject(p)
 	if err != nil {
-		return fmt.Errorf("添加项目失败:%s", err.Error())
+		return err
+	}
+	if oldPro == nil { // 不存在，直接添加
+		p.Completed = checked
+		p.Createtime = time.Now()
+		p.Save()
+	} else { // 已存在，判断completed值是否相同，不相同就更新
+		if oldPro.Completed != checked {
+			oldPro.Completed = checked
+			oldPro.Update()
+		}
+		p = oldPro
 	}
 	// 为项目添加评分，如果已经存在就不添加
 	mark := &ResMark{
 		ProjectID:   p.ProjectID,
 		UserID:      userID,
-		Checked:     checked,
 		MarkReason:  projectContent,
 		Accordingly: markReason,
 		MarkNumber:  markNumber,
 		StartDate:   startDate,
 		EndDate:     endDate,
-		Username:    username,
+		// Username:    username,
 	}
-	err = mark.FirstOrCreate()
+	// 查询
+	oldMark, err := FindSingleMark(mark)
 	if err != nil {
-		return fmt.Errorf("添加分数失败:%s", err.Error())
+		return err
+	}
+	if oldMark == nil {
+		mark.Checked = checked
+		mark.Username = username
+		mark.Save()
+	} else {
+		if oldMark.Checked != checked {
+			oldMark.Checked = checked
+			oldMark.Update()
+
+		}
 	}
 	return nil
 }

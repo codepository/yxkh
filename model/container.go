@@ -1,6 +1,7 @@
 package model
 
 import (
+	"net/url"
 	"os"
 
 	"github.com/mumushuiding/util"
@@ -8,9 +9,10 @@ import (
 
 // Container 参数和结果容器
 type Container struct {
-	Header CHeader `json:"header,omitemtpy"`
-	Body   CBody   `json:"body,omitempty"`
-	File   *os.File
+	Header     CHeader `json:"header,omitemtpy"`
+	Body       CBody   `json:"body,omitempty"`
+	File       *os.File
+	PostParams url.Values
 }
 
 // CHeader CHeader

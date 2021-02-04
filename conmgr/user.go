@@ -245,10 +245,10 @@ func FindTaskRank(titleLike string) (interface{}, error) {
 }
 
 // FindPersonApplyYxkh 查询已经提交或未提交流程的用户
-func FindPersonApplyYxkh(titleLike string, apply int) (interface{}, error) {
+func FindPersonApplyYxkh(fields, titleLike string, apply, limit int) (interface{}, error) {
 	method := "visit/task/personApplyYxkh"
-	params := map[string]interface{}{"titleLike": titleLike, "apply": apply, "limit": 5}
-	return GetDataFromUserAPI("", method, params)
+	params := map[string]interface{}{"titleLike": titleLike, "apply": apply, "limit": limit}
+	return GetDataFromUserAPI(fields, method, params)
 }
 
 // FindUseridsByTagsAndLevel 根据标签和职级查询用户id
@@ -380,7 +380,7 @@ func GetUseridAndDeptByMobileOrName(mobileOrName string) (int, int, error) {
 
 // GetUseridAndNameByMobileOrName 根据电话或名字查询用户
 func GetUseridAndNameByMobileOrName(mobileOrName string) (int, string, error) {
-	fields := "id"
+	fields := "id,name"
 	params := make(map[string]interface{})
 	// 判断是否是电话
 	if util.IsMobile(mobileOrName) {

@@ -102,6 +102,21 @@ func UpdatesMark(id int, params interface{}) error {
 	return db.Model(&ResMark{MarkID: id}).Updates(params).Error
 }
 
+// FindSingleMark 查询分数
+func FindSingleMark(query interface{}) (*ResMark, error) {
+	var datas []*ResMark
+	err := db.Where(query).Find(&datas).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("查询mark:%s", err.Error())
+	}
+	if len(datas) > 0 {
+		datas[0].StartDate = datas[0].StartDate[0:10]
+		datas[0].EndDate = datas[0].EndDate[0:10]
+		return datas[0], nil
+	}
+	return nil, nil
+}
+
 // FindAllMark FindAllMark
 func FindAllMark(fields string, query interface{}, values ...interface{}) ([]*ResMark, error) {
 

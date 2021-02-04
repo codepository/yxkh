@@ -10,6 +10,73 @@ import (
 	"github.com/mumushuiding/util"
 )
 
+// AutoDeductWithMonthProcess 月度考核自动减分程序
+func AutoDeductWithMonthProcess() {
+
+	errlog := &model.ErrLog{
+		BusinessType: "月度考核自动减分程序",
+	}
+	now := time.Now()
+	errlog.CreateTime = now
+	// 查询设置,判断是否启用该程序
+	dic, err := model.FindSingleDict("name='月度考核延期扣分是否启用' and type='月度考核'")
+	if err != nil {
+		errlog.Err = err.Error()
+		errlog.Create()
+		return
+	}
+	if dic.Value != "1" {
+		print("无需扣分，若是需要开启将info_dic表中字段name为[月度考核自动减分程序]的value值设置为1")
+		return
+	}
+	// 判断是否处于需减分的时间段
+	start, err := FindStartDayOfAutoDedcutOfMonthProcess()
+	if err != nil {
+		errlog.Err = err.Error()
+		errlog.Create()
+		return
+	}
+	end, err := FindEndDayOfAutoDedcutOfMonthProcess()
+	if err != nil {
+		errlog.Err = err.Error()
+		errlog.Create()
+		return
+	}
+	day := now.Day()
+	if day < start || day > end {
+		return
+	}
+	year := now.Year()
+	month := now.Month()
+	if month == 1 {
+		year--
+		month = 12
+	}
+	// 查询需要减分的用户
+	users, err := FindPersonApplyYxkh("id,name", fmt.Sprintf("%d年%d月份-月度考核", year, month), 0, 10000)
+	if err != nil {
+		errlog.Err = fmt.Sprintf("查询未提交月度考核的用户:%s", err.Error())
+		errlog.Create()
+		return
+	}
+	if users == nil {
+		return
+	}
+	startDate, endDate := util.GetLastMonthStartAndEnd()
+	startStr := util.FormatDate3(startDate)
+	endStr := util.FormatDate3(endDate)
+	datas := users.([]map[string]interface{})
+	// 生成减分的项
+	for _, u := range datas {
+		err := model.AddProjectWithMark(startStr, endStr, "系统导入", u["id"].(int), "1", "0.5", "月度考核延迟提交产生扣分", u["name"].(string))
+		if err != nil {
+			errlog.Err = fmt.Sprintf("添加减分:%s", err.Error())
+			errlog.Create()
+			return
+		}
+	}
+}
+
 // FindLastMonthMarkRankTop10 查询上月一线考核得分排名前10的
 func FindLastMonthMarkRankTop10() ([]string, error) {
 	// 获取上月日期起止
@@ -42,8 +109,8 @@ func FindMarkRankCurrentYearByGroup(groups []string, level [][]int, tags []strin
 	end := util.FormatDate3(time.Now())
 	// 如何现在月份小于3月，那么显示去年的加减分排行，因为今年的还没统计
 	if now.Month() < 3 {
-		start = fmt.Sprintf("%d-01-01", now.Year())
-		end = fmt.Sprintf("%d-12-31", now.Year())
+		start = fmt.Sprintf("%d-01-01", now.Year()-1)
+		end = fmt.Sprintf("%d-12-31", now.Year()-1)
 	}
 	for _, post := range level {
 		// 组合 groups 和 level
@@ -240,8 +307,6 @@ func FindMarksRank(c *model.Container) error {
 		sqlbuff.WriteString(fmt.Sprintf("and endDate<='%s' ", c.Body.Params["endDate"].(string)))
 	}
 	sqlbuff.WriteString("and checked=1 ")
-	println("user where:", userbuff.String()[4:])
-	println("marsk:", sqlbuff.String()[4:])
 	limit := 50
 	if c.Body.Params["limit"] != nil {
 		limit, err = util.Interface2Int(c.Body.Params["limit"])

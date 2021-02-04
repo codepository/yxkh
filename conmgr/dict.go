@@ -3,6 +3,7 @@ package conmgr
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/codepository/yxkh/model"
@@ -11,7 +12,7 @@ import (
 
 // FindallDict 字典查询
 func FindallDict(c *model.Container) error {
-	errstr := `{"body":"params":{"name":"评分依据","value":"","type":"","type2"}} 不能全为空`
+	errstr := `{"body":"params":{"limit":20,"name":"评分依据","value":"","type":"","type2"}} 不能全为空`
 	if len(c.Body.Params) == 0 {
 		return errors.New(errstr)
 	}
@@ -31,11 +32,30 @@ func FindallDict(c *model.Container) error {
 	if buf.Len() == 0 {
 		return errors.New(errstr)
 	}
-	data, err := model.FindAllInfoDic(buf.String()[4:])
-	if err != nil {
-		return err
+	if c.Body.Params["limit"] == nil {
+		data, err := model.FindAllInfoDic(buf.String()[4:])
+		if err != nil {
+			return err
+		}
+		c.Body.Data = append(c.Body.Data, data)
+	} else {
+		limit, err := util.Interface2Int(c.Body.Params["limit"])
+		if err != nil {
+			return err
+		}
+		offset := 0
+		if c.Body.Params["offset"] != nil {
+			offset, err = util.Interface2Int(c.Body.Params["offset"])
+			if err != nil {
+				return err
+			}
+		}
+		data, err := model.FindAllInfoDicPaged(buf.String()[4:], limit, offset)
+		if err != nil {
+			return err
+		}
+		c.Body.Data = append(c.Body.Data, data)
 	}
-	c.Body.Data = append(c.Body.Data, data)
 	return nil
 }
 
@@ -197,4 +217,110 @@ func DelDict(c *model.Container) error {
 		ids = append(ids, r)
 	}
 	return model.DeleteDicsIDs(ids)
+}
+
+// FindStartDayOfAutoDedcutOfMonthProcess 月度考核开始扣分日期
+func FindStartDayOfAutoDedcutOfMonthProcess() (int, error) {
+	start, err := model.FindSingleDict("name='延迟提交扣分日期'")
+	if err != nil {
+		return 0, fmt.Errorf("查询info_dic表name为[延迟提交扣分日期]的值:%s", err.Error())
+	}
+	s, err := strconv.Atoi(start.Value)
+	if err != nil {
+		return 0, fmt.Errorf("info_dic表name为[延迟提交扣分日期]的值转数字:%s", err.Error())
+	}
+	return s, nil
+
+}
+
+// FindEndDayOfAutoDedcutOfMonthProcess 月度考核结束扣分日期
+func FindEndDayOfAutoDedcutOfMonthProcess() (int, error) {
+	start, err := model.FindSingleDict("name='限期未交扣分日期'")
+	if err != nil {
+		return 0, fmt.Errorf("查询info_dic表name为[延迟提交扣分日期]的值:%s", err.Error())
+	}
+	s, err := strconv.Atoi(start.Value)
+	if err != nil {
+		return 0, fmt.Errorf("info_dic表name为[限期未交扣分日期]的值转数字:%s", err.Error())
+	}
+	return s, nil
+
+}
+
+// ExportMarksPriciple 导出加减分规则
+func ExportMarksPriciple(c *model.Container) error {
+	header := c.Body.Data[0].([]interface{})
+	fields := c.Body.Data[1].([]interface{})
+	// 查询数据
+	datas, err := model.FindAllInfoDic("name='评分依据'")
+	if err != nil {
+		return fmt.Errorf("导出加减分：%s", err.Error())
+	}
+	// 将数据转换成csv格式
+	result, err := util.Transform2Csv(header, fields, datas)
+	if err != nil {
+		return fmt.Errorf("数据转换成csv:%s", err.Error())
+	}
+	c.Body.Data = c.Body.Data[:0]
+	c.Body.Data = append(c.Body.Data, result...)
+	return nil
+}
+
+// ImportMarksPriciple 导入加减分
+func ImportMarksPriciple(c *model.Container) error {
+	var buff strings.Builder
+	var datas [][]string
+	var err error
+	ss := strings.Split(c.File.Name(), ".")
+	switch ss[len(ss)-1] {
+	case "xlsx":
+		datas, err = GetDatasFromXlsx(c.File)
+		break
+	case "csv":
+		datas, err = GetDatasFromCSV(c.File)
+		break
+	default:
+		return fmt.Errorf("暂时只支持xlsx和csv后缀的文件")
+	}
+	if err != nil {
+		return fmt.Errorf("解析xlsx或csv文件:%s", err.Error())
+	}
+	// 验证行头,第1列是ID,第2列是“修改前",第3列是"修改后"
+	if len(datas) < 2 {
+		return fmt.Errorf("确认导入数据是否为空")
+	}
+	for i, row := range datas[1:] {
+		// 若第1列ID为空，判断是否已经存在，不存在就保存
+		if len(row[0]) == 0 {
+			dic := &model.InfoDic{
+				Name:  "评分依据",
+				Value: row[1],
+			}
+			err := dic.FirstOrCreate()
+			if err != nil {
+				buff.WriteString(fmt.Sprintf("第[%d]行:%s", i+2, err.Error()))
+			}
+		} else if len(row[2]) > 0 { // 获取修改后不为空的数据
+
+			dic := &model.InfoDic{
+				Value: row[2],
+			}
+
+			id, err := strconv.Atoi(row[0])
+			if err != nil {
+				buff.WriteString(fmt.Sprintf("第[%d]行:%s", i+2, err.Error()))
+			}
+			dic.ID = id
+			err = dic.Updates()
+			if err != nil {
+				buff.WriteString(fmt.Sprintf("第[%d]行:%s", i+2, err.Error()))
+			}
+
+		}
+	}
+	if buff.Len() > 0 {
+		return fmt.Errorf("以下导入失败:\n%s", buff.String())
+	}
+	return nil
+
 }

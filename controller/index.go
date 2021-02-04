@@ -98,12 +98,12 @@ func Import(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ss := strings.Split(filehead.Filename, ".")
-	if ss[len(ss)-1] != "xlsx" {
-		fmt.Fprintf(w, "只支持xlsx")
+	if ss[len(ss)-1] != "xlsx" && ss[len(ss)-1] != "csv" {
+		fmt.Fprintf(w, "只支持xlsx和csv文件格式")
 		file.Close()
 		return
 	}
-	filesave := fmt.Sprintf("%s%d", filehead.Filename, time.Now().Nanosecond())
+	filesave := fmt.Sprintf("%d%s", time.Now().Nanosecond(), filehead.Filename)
 	//打开 已只读,文件不存在创建 方式打开  要存放的路径资源
 	f, err := os.OpenFile(filesave, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -124,6 +124,7 @@ func Import(w http.ResponseWriter, req *http.Request) {
 	}
 	//  文件导入之后，执行操作
 	par := model.Container{}
+	par.PostParams = req.PostForm
 	values := req.URL.Query()
 	method := values.Get("method")
 	token := values.Get("token")
@@ -201,10 +202,6 @@ func Export(w http.ResponseWriter, r *http.Request) {
 	for _, h := range categoryHeader {
 		header = append(header, h.(string))
 	}
-	// if !ok {
-	// 	util.ResponseErr(w, errstr)
-	// 	return
-	// }
 	f, err := GetRoute(par.Body.Method, par.Header.Token)
 	if err != nil {
 		util.ResponseErr(w, err)
@@ -219,6 +216,7 @@ func Export(w http.ResponseWriter, r *http.Request) {
 	// 导出
 	fileName := "export.csv"
 	b := &bytes.Buffer{}
+	b.WriteString("\xEF\xBB\xBF")
 	wr := csv.NewWriter(b)
 
 	wr.Write(header)

@@ -37,13 +37,13 @@ func RefreshHomeData(c *model.Container) error {
 	}
 	now := time.Now()
 	year := now.Year()
-	month := now.Month()
-	if month == 1 {
+	month := now.Month() - 1
+	if month == 0 {
 		month = 12
 		year--
 	}
-	month--
 	titleLike := fmt.Sprintf("%d年%d月份-月度考核", year, month)
+	println("查询:", titleLike)
 	// 上个月一线考核提交情况
 	completedDescribe, err := FindTaskCompletedDescribe(titleLike)
 	if err != nil {
@@ -66,7 +66,7 @@ func RefreshHomeData(c *model.Container) error {
 		c.Body.Data = append(c.Body.Data, taskRank)
 	}
 	// 未提交一线考核的员工
-	users, err := FindPersonApplyYxkh(titleLike, 0)
+	users, err := FindPersonApplyYxkh("", titleLike, 0, 5)
 	if err != nil {
 		return fmt.Errorf("月度考核未交清单:%s", err.Error())
 	}
@@ -81,7 +81,7 @@ func RefreshHomeData(c *model.Container) error {
 		return fmt.Errorf("加减分排行:%s", err.Error())
 	}
 	c.Body.Data = append(c.Body.Data, userMarks)
-	// 半年考核排行
+
 	month = now.Month()
 	year = now.Year()
 	sparation1 := ""
@@ -92,6 +92,7 @@ func RefreshHomeData(c *model.Container) error {
 		sparation1 = fmt.Sprintf("%d年-半年考核", year-1)
 	}
 	sparation2 = fmt.Sprintf("%d年-年度考核", year-1)
+	// 半年考核排行
 	halfyear, err := model.FindAllEvaluation("department,sparation,result,publicEvaluation,leadershipEvaluation,eId,uid,username,totalMark,marks,overseerEvaluation", "res_evaluation.totalMark+0 desc,res_evaluation.marks+0 desc", 20, 0, map[string]interface{}{"sparation": sparation1})
 	if err != nil {
 		return fmt.Errorf("查询半年考核:%s", err.Error())
@@ -119,6 +120,7 @@ func RefreshHomeData(c *model.Container) error {
 	c.Body.Data = append(c.Body.Data, assessGroup)
 	Conmgr.cacheMap[HomeDataCache] = c.Body.Data
 	return nil
+
 }
 
 // GetHomeData 获取所有首页数据
@@ -130,7 +132,7 @@ func GetHomeData(c *model.Container) error {
 		}
 		Conmgr.cacheMap[HomeDataCache] = c.Body.Data
 	} else {
-		log.Println("从缓存读取homedata")
+		log.Println("get homedata from cache")
 		c.Body.Data = Conmgr.cacheMap[HomeDataCache].([]interface{})
 	}
 	return nil

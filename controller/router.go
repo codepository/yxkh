@@ -87,6 +87,10 @@ func SetRouters() {
 		{route: "exec/yxkh/updateDict", handler: conmgr.UpdateDict},
 		{route: "exec/yxkh/addDict", handler: conmgr.AddDict},
 		{route: "exec/yxkh/delDict", handler: conmgr.DelDict},
+		// 导出加减分规则
+		{route: "export/yxkh/exportMarksPriciple", handler: conmgr.ExportMarksPriciple},
+		// 导入加减分
+		{route: "import/yxkh/importMarksPriciple", handler: conmgr.ImportMarksPriciple},
 	}
 }
 

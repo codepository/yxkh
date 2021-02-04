@@ -80,6 +80,8 @@ out:
 			go RefreshCacheMap()
 			// 处理分布式错误
 			go ReExeProcessByErrLog()
+			// 月度考核自动减分程序
+			go AutoDeductWithMonthProcess()
 		}
 	}
 }
@@ -93,9 +95,8 @@ func RefreshCacheMap() {
 func clearCacheMap() {
 	Conmgr.cacheMapLock.Lock()
 	defer Conmgr.cacheMapLock.Unlock()
-	len := len(Conmgr.cacheMap)
-	if len > 0 {
-		//清空 map 的唯一办法就是重新 make 一个新的 map，不用担心垃圾回收的效率，Go语言中的并行垃圾回收效率比写一个清空函数要高效的多。
-		Conmgr.cacheMap = map[string]interface{}{}
-	}
+
+	//清空 map 的唯一办法就是重新 make 一个新的 map，不用担心垃圾回收的效率，Go语言中的并行垃圾回收效率比写一个清空函数要高效的多。
+	Conmgr.cacheMap = map[string]interface{}{}
+
 }
