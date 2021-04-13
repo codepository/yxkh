@@ -430,3 +430,25 @@ func FindAllTags(params map[string]interface{}) ([]interface{}, error) {
 	}
 	return datas[0].([]interface{}), nil
 }
+
+// UserAddTag 用户添加标签
+// 参数格式：params:{"uid":334,"labelname":"不考核"}
+func UserAddTag(params map[string]interface{}) error {
+	method := "exec/user/addlabel2"
+	_, err := GetDataFromUserAPI("", method, params)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DelUserTag 删除用户标签
+// {"body":{"method":"exec/user/dellabel2","params":{"uid":334,"tagId":27}}}
+func DelUserTag(params map[string]interface{}) error {
+	method := "exec/user/dellabel2"
+	_, err := GetDataFromUserAPI("", method, params)
+	if err != nil {
+		return fmt.Errorf("调用User模块:%s", err.Error())
+	}
+	return nil
+}

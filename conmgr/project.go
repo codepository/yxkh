@@ -3,6 +3,7 @@ package conmgr
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/codepository/yxkh/model"
 	"github.com/mumushuiding/util"
@@ -65,6 +66,41 @@ func DelProject(c *model.Container) error {
 	}
 	err := model.DelProjectByIDs(ids)
 	return err
+}
+
+// AddLastMonthProject 添加上月项目
+func AddLastMonthProject(c *model.Container) error {
+	// 用户id不能为空
+	userID := c.Body.UserID
+	if userID == 0 {
+		return fmt.Errorf(`参数格式：{"body":"user_id": 334} user_id 不能为空`)
+	}
+	// 修改日期，并添加
+	createTime := time.Now()
+	// 获取前月开始日期和结束日期
+	start, end := util.GetBeforeLastMonthStartAndEnd()
+	// 查询上月项目
+	datas, err := model.FindAllProject(fmt.Sprintf("startDate='%s' and endDate='%s' and userId=%d", util.FormatDate3(start), util.FormatDate3(end), userID))
+	if err != nil {
+		return err
+	}
+	// 获取上月开始日期和结束日期
+	startDate, endDate := util.GetLastMonthStartAndEnd()
+	for _, d := range datas {
+		d1 := &model.ResProject{
+			Createtime:     createTime,
+			ProjectContent: d.ProjectContent,
+			StartDate:      util.FormatDate3(startDate),
+			EndDate:        util.FormatDate3(endDate),
+			UserID:         userID,
+		}
+		err := d1.FirstOrCreate()
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
 }
 
 // AddProject 添加项目

@@ -146,7 +146,7 @@ func RemarkEvaluationByProcessInstanceID(processInstanceID string) (*ReExecData,
 		return red, fmt.Errorf("查询字典【%s】失败:%s", dicName, err.Error())
 	}
 	// 添加加减分
-	err = model.AddProjectWithMark(e.StartDate, e.EndDate, dicName, e.UID, "1", dic[0].Value, dicName, user["name"].(string))
+	_, err = model.AddProjectWithMark(e.StartDate, e.EndDate, dicName, e.UID, "1", dic[0].Value, dicName, user["name"].(string))
 	if err != nil {
 		return red, fmt.Errorf("月度考核自动加分失败:%s", err.Error())
 	}
@@ -169,7 +169,7 @@ func checkImportPublicAssessDate(processName string) error {
 	typename := strings.Split(processName, "-")[1]
 	now := time.Now().Unix()
 	switch typename {
-	case "半年考核":
+	case YXKHBnkh:
 		start, err = util.ParseDate3(year + "-07-01")
 		if err != nil {
 			return err
@@ -180,7 +180,7 @@ func checkImportPublicAssessDate(processName string) error {
 			return nil
 		}
 		return fmt.Errorf("[%s]群众评议只能在[%s]和[%s]之间导入", processName, year+"-07-01", year+"-12-31")
-	case "年度考核":
+	case YXKHNdkh:
 		y, err := strconv.Atoi(year)
 		if err != nil {
 			return err
@@ -279,7 +279,7 @@ func GetMarksFromXlsx(file *os.File, checked string) error {
 		if i == 0 {
 			continue
 		}
-		err = model.AddProjectWithMark(r[1], r[2], r[3], idmap[r[0]], checked, r[5], r[4], usernameMap[r[0]])
+		_, err = model.AddProjectWithMark(r[1], r[2], r[3], idmap[r[0]], checked, r[5], r[4], usernameMap[r[0]])
 		if err != nil {
 			haserr = true
 			buff.WriteString(fmt.Sprintf("第%d行导入数据有误:%s\n", i+1, err.Error()))
@@ -418,6 +418,26 @@ func GetPublicAssessFromXlsx(file *os.File) error {
 
 	if haserr {
 		return fmt.Errorf(buff.String())
+	}
+	return nil
+}
+
+// SaveEvaluation 存储考核数据
+func SaveEvaluation(c *model.Container) error {
+	// 获取参数
+	if len(c.Body.Params) == 0 {
+		return fmt.Errorf(`参数格式:{"body":"params":{}} params为需要保存的数据`)
+	}
+	// 转换格式
+	e := model.ResEvaluation{}
+	err := e.FromMap(c.Body.Params)
+	if err != nil {
+		return err
+	}
+	// 保存数据
+	err = e.FirstOrCreate()
+	if err != nil {
+		return err
 	}
 	return nil
 }

@@ -189,7 +189,8 @@ func (e *ResEvaluation) FirstOrCreate() error {
 	if len(e.ProcessInstanceID) == 0 {
 		return fmt.Errorf("processInstanceId不能为空")
 	}
-	return db.Where(ResEvaluation{ProcessInstanceID: e.ProcessInstanceID}).Assign(e).FirstOrCreate(&ResEvaluation{}).Error
+	err := db.Where(ResEvaluation{ProcessInstanceID: e.ProcessInstanceID}).Assign(e).FirstOrCreate(&ResEvaluation{}).Error
+	return err
 }
 
 // FindSingleEvaluation2 查询流程，返回一条
@@ -215,6 +216,8 @@ func FindSingleEvaluation(processInstanceID interface{}) (*ResEvaluation, error)
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
+	ep.StartDate = ep.StartDate[0:10]
+	ep.EndDate = ep.EndDate[0:10]
 	return &ep, nil
 }
 

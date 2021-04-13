@@ -21,6 +21,9 @@ var YXKHBnkh = "半年考核"
 // Zrqd 责任清单
 var Zrqd = "责任清单"
 
+// BKHSZ 不考核设置
+var BKHSZ = "不考核设置"
+
 // StartProcess 启动流程
 func StartProcess(c *model.Container) error {
 	errstr := `参数缺一不可，参数格式:{"header":{"token":""},"body":{"params":{"perform":1,"title":"张三-6月一线考核","templateId":"002d5df2a737dd36a2e78314b07d0bb1_1591669930","businessType":"月度考核","data":{}}}} perform:1表示保存先不提交,默认值0表示直接提交`
@@ -45,12 +48,25 @@ func StartProcess(c *model.Container) error {
 		return errors.New(errstr)
 	}
 	businessType = c.Body.Params["businessType"].(string)
-	// templateID = c.Body.Params["templateId"].(string)
-	// title = c.Body.Params["title"].(string)
 	data = c.Body.Params["data"].(map[string]interface{})
 	if len(data) == 0 {
 		return errors.New("data 不能为空")
 	}
+	// 判断是否已经存在
+	switch businessType {
+	case YXKHBnkh, YXKHYdkh, YXKHNdkh:
+		// 判断是否已经存在
+		e, err := model.FindSingleEvaluation2("sparation=? and uid=?", data["sparation"], data["uid"])
+		if err != nil {
+			return fmt.Errorf("查询evaluation:%s", err.Error())
+		}
+		if e != nil {
+			return fmt.Errorf("该用户[%s]的[%s]已经存在,不可重复添加", data["username"], data["sparation"])
+		}
+	default:
+
+	}
+
 	// 检测远程用户端口是否可用
 	ok := IsUserAPIAlive()
 	if !ok {
@@ -103,7 +119,7 @@ func StartProcess(c *model.Container) error {
 
 // CompleteProcess 审批流程
 func CompleteProcess(c *model.Container) error {
-	errstr := `参数格式:{"header":{"token":""},"body":{"params":{"businessType":"月度考核","data":{"processInstanceId":"B4MttX5xHnfKdf"},"perform":2,"speech":""}}}`
+	errstr := `参数格式:{"header":{"token":""},"body":{"params":{"businessType":"月度考核","processInstanceId":"B4MttX5xHnfKdf","data":{"processInstanceId":"B4MttX5xHnfKdf"},"perform":2,"speech":""}}}`
 	if c.Body.Params["businessType"] == nil || len(c.Body.Params["businessType"].(string)) == 0 {
 		return fmt.Errorf("businessType不能为空,%s", errstr)
 	}
@@ -119,6 +135,9 @@ func CompleteProcess(c *model.Container) error {
 	if c.Body.Params["data"] != nil {
 		data = c.Body.Params["data"].(map[string]interface{})
 		thirdNo = data["processInstanceId"].(string)
+	}
+	if c.Body.Params["processInstanceId"] != nil {
+		thirdNo = c.Body.Params["processInstanceId"].(string)
 	}
 	if len(thirdNo) == 0 {
 		return fmt.Errorf("processInstanceId 不能为空,%s", errstr)
@@ -161,10 +180,73 @@ func CompleteProcess(c *model.Container) error {
 	return nil
 }
 
+// ExecGeneralWhenProcessCompleted 通用执行程序
+func ExecGeneralWhenProcessCompleted(process *model.Process, processInstanceID string) (*ReExecData, error) {
+	// 查询流程数据
+	data, err := model.FindFlowdataByProcessInstanceID(processInstanceID)
+	if err != nil {
+		return nil, fmt.Errorf("查询流程数据:%s", err.Error())
+	}
+	if len(data.Data) == 0 {
+		return nil, fmt.Errorf("流程数据为空")
+	}
+	dataMap, err := util.Str2Map(data.Data)
+	if err != nil {
+		return nil, fmt.Errorf("字符串转map：%s", err.Error())
+	}
+	red := &ReExecData{Key: processInstanceID, FuncName: "ExecWhenProcessCompleted"}
+	switch process.BusinessType {
+	case BKHSZ:
+		if dataMap["uid"] == nil {
+			return nil, fmt.Errorf("流程数据uid为空")
+		}
+		if dataMap["tagId"] == nil {
+			return nil, fmt.Errorf("流程数据tagId为空")
+		}
+		// 删除用户所在考核组标签
+		err = DelUserTag(map[string]interface{}{"uid": dataMap["uid"], "tagId": dataMap["tagId"]})
+		if err != nil {
+			return nil, err
+		}
+		break
+	case "删除超时扣分":
+		// 查看 projectId
+		pid, err := util.Interface2Int(dataMap["projectId"])
+		if err != nil {
+			return red, fmt.Errorf("projectId 不能为空")
+		}
+		err = model.DelProjectByID(pid)
+		if err != nil {
+			return red, fmt.Errorf("删除res_project表中projectId为[%d]的超时扣分:%s", pid, err.Error())
+		}
+		break
+	case "加减分申请":
+		pids, ok := dataMap["pids"].([]interface{})
+		if !ok {
+			return red, fmt.Errorf("加减分申请流程,pids必须为数组")
+		}
+		for _, id := range pids {
+			query := map[string]interface{}{"projectId": id}
+			values := map[string]interface{}{"checked": "1"}
+			err = model.UpdateMarks(query, values)
+			if err != nil {
+				return red, fmt.Errorf("使加减分生效失败:%s", err.Error())
+			}
+			err = model.UpdatesProject(query, map[string]interface{}{"completed": "1"})
+			if err != nil {
+				return red, fmt.Errorf("设置项目结束失败:%s", err.Error())
+			}
+		}
+		break
+
+	default:
+	}
+	return red, nil
+}
+
 // ExecWhenProcessCompleted 当流程结束时
 func ExecWhenProcessCompleted(processInstanceID string) (*ReExecData, error) {
 	// 查询流程
-	println("执行ExecWhenProcessCompleted函数")
 	red := &ReExecData{Key: processInstanceID, FuncName: "ExecWhenProcessCompleted"}
 	ps, err := FindAllProcess(map[string]interface{}{"processInstanceId": processInstanceID})
 	if err != nil {
@@ -188,6 +270,7 @@ func ExecWhenProcessCompleted(processInstanceID string) (*ReExecData, error) {
 		}
 		break
 	default:
+		return ExecGeneralWhenProcessCompleted(ps[0], processInstanceID)
 	}
 	return nil, nil
 }
@@ -195,44 +278,8 @@ func ExecWhenProcessCompleted(processInstanceID string) (*ReExecData, error) {
 // FirstOrCreateFlowData 保存流程数据
 func FirstOrCreateFlowData(businessType string, data map[string]interface{}) error {
 	switch businessType {
-	// 月度考核
-	case YXKHYdkh:
-		e := model.ResEvaluation{}
-		err := e.FromMap(data)
-		if err != nil {
-			return err
-		}
-		err = e.FirstOrCreate()
-		if err != nil {
-			return err
-		}
-		break
-	// 年度考核
-	case YXKHNdkh:
-		e := model.ResEvaluation{}
-		err := e.FromMap(data)
-		if err != nil {
-			return err
-		}
-		err = e.FirstOrCreate()
-		if err != nil {
-			return err
-		}
-		break
-	// 半年考核
-	case YXKHBnkh:
-		e := model.ResEvaluation{}
-		err := e.FromMap(data)
-		if err != nil {
-			return err
-		}
-		err = e.FirstOrCreate()
-		if err != nil {
-			return err
-		}
-		break
-	// 责任清单
-	case Zrqd:
+	// 月度考核、半年考核、年度考核、责任清单
+	case YXKHYdkh, YXKHNdkh, YXKHBnkh, Zrqd:
 		e := model.ResEvaluation{}
 		err := e.FromMap(data)
 		if err != nil {
@@ -244,7 +291,16 @@ func FirstOrCreateFlowData(businessType string, data map[string]interface{}) err
 		}
 		break
 	default:
-		return fmt.Errorf("流程类型[%s]不存在", businessType)
+		processInstanceID := data["processInstanceId"].(string)
+		r, _ := util.ToJSONStr(data)
+		fd := &model.Flowdata{
+			ProcessInstanceID: processInstanceID,
+			Data:              r,
+		}
+		err := fd.FirstOrCreate()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 
@@ -272,22 +328,11 @@ func DelFlow(c *model.Container) error {
 	// 删除流程数据
 	switch businessType {
 	// 月度考核
-	case YXKHYdkh:
+	case YXKHYdkh, YXKHNdkh, YXKHBnkh, Zrqd:
 		err = model.DelEvaluationByProcessInstanceID(c.Body.Params["processInstanceId"])
-		break
-	// 年度考核
-	case YXKHNdkh:
-		err = model.DelEvaluationByProcessInstanceID(c.Body.Params["processInstanceId"])
-		break
-	// 半年考核
-	case YXKHBnkh:
-		err = model.DelEvaluationByProcessInstanceID(c.Body.Params["processInstanceId"])
-		break
-	// 责任清单
-	case Zrqd:
 		break
 	default:
-		return fmt.Errorf("流程类型[%s]不存在", businessType)
+		return model.DelFlowdataByProcessInstanceID(c.Body.Params["processInstanceId"])
 	}
 	return err
 }
@@ -309,23 +354,11 @@ func FindFlowDatas(c *model.Container) error {
 	var err error
 	switch businessType {
 	// 月度考核
-	case YXKHYdkh:
-		data, err = model.FindSingleEvaluation(c.Body.Params["processInstanceId"])
-		break
-	// 年度考核
-	case YXKHNdkh:
-		data, err = model.FindSingleEvaluation(c.Body.Params["processInstanceId"])
-		break
-	// 半年考核
-	case YXKHBnkh:
-		data, err = model.FindSingleEvaluation(c.Body.Params["processInstanceId"])
-		break
-	// 责任清单
-	case Zrqd:
+	case YXKHYdkh, YXKHNdkh, YXKHBnkh, Zrqd:
 		data, err = model.FindSingleEvaluation(c.Body.Params["processInstanceId"])
 		break
 	default:
-		return fmt.Errorf("流程类型[%s]不存在", businessType)
+		data, err = model.FindFlowdataByProcessInstanceID(c.Body.Params["processInstanceId"])
 	}
 	if err != nil {
 		return err

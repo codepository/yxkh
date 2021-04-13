@@ -43,6 +43,7 @@ func SetRouters() {
 		// ***************** 工作考核 ***************************
 		// 半年和年度考核排行
 		{route: "visit/yxkh/findAllEvalutionRank", handler: conmgr.FindAllEvalutionRank},
+		{route: "exec/yxkh/saveEvaluation", handler: conmgr.SaveEvaluation},
 		// 导出半年和年度考核排行
 		{route: "export/yxkh/findAllEvalutionRank", handler: conmgr.ExportAllEvalutionRank},
 		// 查询半年、年度考核评分占比
@@ -67,14 +68,19 @@ func SetRouters() {
 		{route: "visit/yxkh/findAllProjectWithMarks", handler: conmgr.FindAllProjectWithMarks},
 		// 查询所有加减分
 		{route: "visit/yxkh/findallMarks", handler: conmgr.FindAllMarks},
+		//
 		// 添加项目
 		{route: "exec/yxkh/addProject", handler: conmgr.AddProject},
+		// 添加上月项目
+		{route: "visit/yxkh/addLastMonthProject", handler: conmgr.AddLastMonthProject},
 		// 删除项目
 		{route: "exec/yxkh/delProject", handler: conmgr.DelProject},
 		// 修改项目
 		{route: "exec/yxkh/updateProject", handler: conmgr.UpdateProject},
 		// 添加评分
 		{route: "exec/yxkh/addMark", handler: conmgr.AddMark},
+		// 添加项目和项目评分
+		{route: "exec/yxkh/addProjectWithMark", handler: conmgr.AddProjectWithMark},
 		// 删除评分
 		{route: "exec/yxkh/delMark", handler: conmgr.DelMark},
 		// 修改评分
@@ -89,7 +95,7 @@ func SetRouters() {
 		{route: "exec/yxkh/delDict", handler: conmgr.DelDict},
 		// 导出加减分规则
 		{route: "export/yxkh/exportMarksPriciple", handler: conmgr.ExportMarksPriciple},
-		// 导入加减分
+		// 导入加减分规则
 		{route: "import/yxkh/importMarksPriciple", handler: conmgr.ImportMarksPriciple},
 	}
 }

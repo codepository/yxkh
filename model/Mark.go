@@ -144,10 +144,13 @@ func FindAllMarkPaged(fields string, limit, offset int, order string, query inte
 	if limit == 0 {
 		limit = 20
 	}
+	if len(fields) == 0 {
+		fields = "*"
+	}
 	if len(order) == 0 {
 		order = "createTime desc"
 	}
-	err := db.Where(query).Limit(limit).Offset(offset).Order(order).Find(&datas).Error
+	err := db.Select(fields).Where(query).Limit(limit).Offset(offset).Order(order).Find(&datas).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return make([]*ResMark, 0), err
 	}
@@ -185,6 +188,37 @@ func DelMarkByID(id int) error {
 	return db.Where("markId=?", id).Delete(&ResMark{}).Error
 }
 
+// delMark 删除加减分
+func delMark(query interface{}, args ...interface{}) error {
+	if query == nil {
+		return fmt.Errorf("query 不能为空")
+	}
+	return db.Where(query, args...).Delete(&ResMark{}).Error
+}
+
+// // DelMarkDelaySubmit 删除延迟提交的
+// // 日期格式: 2020-01-12
+// func DelMarkDelaySubmit(userID int,startDate string,endDate string) error{
+// 	// 参数检查
+// 	s,err:=util.ParseDate3(startDate)
+// 	if err!=nil{
+// 		return fmt.Errorf("startDate格式必须为'2020-01-12':%s",err.Error())
+// 	}
+// 	e,err:=util.ParseDate3(endDate)
+// 	if err!=nil{
+// 		return fmt.Errorf("endDate格式必须为'2020-01-12':%s",err.Error())
+// 	}
+// 	if s.Unix()-e.Unix()>0{
+// 		return fmt.Errorf("startDate 不能大于 endDate")
+// 	}
+// 	if userID==0{
+// 		return fmt.Errorf("userid 不能不为空")
+// 	}
+// 	// sql语句构造
+// 	accordingly:="月度考核延迟提交产生扣分"
+// 	delMark("startDate=? and endDate=? and userId=? and accordingly=?",startDate,endDate,userID,accordingly)
+
+// }
 func (m *ResMark) prepareData() error {
 	if len(m.MarkNumber) == 0 || m.MarkNumber == "0" { // 评分不能为空或者0
 		return errors.New("字段【markNumber】不能为0或者空")

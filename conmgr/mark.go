@@ -18,6 +18,14 @@ func AutoDeductWithMonthProcess() {
 	}
 	now := time.Now()
 	errlog.CreateTime = now
+	// 查询扣除的分数
+	numDic, err := model.FindSingleDict("name='月考延迟提交每日扣分' and type='月考自动加减分'")
+	if err != nil {
+		errlog.Err = fmt.Sprintf("查询每日扣分数:%s", err.Error())
+		errlog.Create()
+		return
+	}
+	num := numDic.Value
 	// 查询设置,判断是否启用该程序
 	dic, err := model.FindSingleDict("name='月度考核延期扣分是否启用' and type='月度考核'")
 	if err != nil {
@@ -68,7 +76,7 @@ func AutoDeductWithMonthProcess() {
 	datas := users.([]map[string]interface{})
 	// 生成减分的项
 	for _, u := range datas {
-		err := model.AddProjectWithMark(startStr, endStr, "系统导入", u["id"].(int), "1", "0.5", "月度考核延迟提交产生扣分", u["name"].(string))
+		_, err := model.AddProjectWithMark(startStr, endStr, "系统导入", u["id"].(int), "1", num, "月度考核延迟提交产生扣分", u["name"].(string))
 		if err != nil {
 			errlog.Err = fmt.Sprintf("添加减分:%s", err.Error())
 			errlog.Create()
@@ -196,6 +204,123 @@ func DelMark(c *model.Container) error {
 	}
 	return nil
 
+}
+
+// AddProjectWithMark 添加项目和评分
+func AddProjectWithMark(c *model.Container) error {
+	errstr := `参数格式:{"body":"params":{"data":[{"startDate":"2020-01-03","endDate":"2020-01-31","markNumber":"1.0","markReason":"加分原因","accordingly":"加分依据,"userId":3,"username":"张三"},{},]}}`
+	// 验证参数
+	if len(c.Body.Params) == 0 || c.Body.Params["data"] == nil {
+		return fmt.Errorf(errstr)
+	}
+	// 数组是否为空
+	datas, ok := c.Body.Params["data"].([]interface{})
+	if !ok {
+		return fmt.Errorf("data 必须为数组")
+	}
+	if len(datas) == 0 {
+		return fmt.Errorf("data 数组不能为空")
+	}
+	// 验证参数类型
+	var err error
+	var buff strings.Builder
+	for i, d := range datas {
+		dmap, ok := d.(map[string]interface{})
+		var startDate, endDate string
+		if !ok {
+			return fmt.Errorf("必须为json数组")
+		}
+		if dmap["startDate"] == nil {
+			buff.WriteString(fmt.Sprintf("第%d行[startDate]不能为空", i+1))
+		} else {
+			startDate, ok = dmap["startDate"].(string)
+			if !ok {
+				buff.WriteString(fmt.Sprintf("第%d行[startDate]必须为字符串", i+1))
+			} else {
+				yes, _ := util.IsDate3(startDate)
+				if !yes {
+					buff.WriteString(fmt.Sprintf("所有日期格式必须为[yyyy-mm-dd]"))
+				}
+			}
+
+		}
+		if dmap["endDate"] == nil {
+			buff.WriteString(fmt.Sprintf("第%d行[startDate]不能为空", i+1))
+		} else {
+			endDate, ok = dmap["endDate"].(string)
+			if !ok {
+				buff.WriteString(fmt.Sprintf("第%d行[endDate]必须为字符串", i+1))
+			} else {
+				yes, _ := util.IsDate3(endDate)
+				if !yes {
+					buff.WriteString(fmt.Sprintf("所有日期格式必须为[yyyy-mm-dd]"))
+				}
+			}
+		}
+		if dmap["markNumber"] == nil {
+			buff.WriteString(fmt.Sprintf("第%d行[markNumber]不能为空", i+1))
+		} else {
+			markNumber, ok := dmap["markNumber"].(string)
+			if !ok {
+				buff.WriteString(fmt.Sprintf("第%d行[markNumber]必须为字符串", i+1))
+			}
+			yes, _ := util.IsDoubleStr(markNumber)
+			if !yes {
+				buff.WriteString(fmt.Sprintf("第%d行[markNumber]必须为double字符串", i+1))
+			}
+		}
+		if dmap["markReason"] == nil {
+			buff.WriteString(fmt.Sprintf("第%d行[markReason]不能为空", i+1))
+		} else {
+			_, ok = dmap["markReason"].(string)
+			if !ok {
+				buff.WriteString(fmt.Sprintf("第%d行[markReason]必须为字符串", i+1))
+			}
+		}
+		if dmap["userId"] == nil {
+			buff.WriteString(fmt.Sprintf("第%d行[userId]不能为空", i+1))
+		} else {
+			_, err = util.Interface2Int(dmap["userId"])
+			if err != nil {
+				buff.WriteString(fmt.Sprintf("第%d行[userId]必须为字符串", i+1))
+			}
+		}
+		if dmap["username"] == nil {
+			buff.WriteString(fmt.Sprintf("第%d行[username]不能为空", i+1))
+		} else {
+			_, ok = dmap["username"].(string)
+			if !ok {
+				buff.WriteString(fmt.Sprintf("第%d行[username]必须为字符串", i+1))
+			}
+		}
+		if dmap["accordingly"] == nil {
+			buff.WriteString(fmt.Sprintf("第%d行[accordingly]不能为空", i+1))
+		} else {
+			_, ok = dmap["accordingly"].(string)
+			if !ok {
+				buff.WriteString(fmt.Sprintf("第%d行[startDate]必须为字符串", i+1))
+			}
+		}
+
+	}
+	if buff.Len() > 0 {
+		return fmt.Errorf(buff.String())
+	}
+	c.Body.Data = c.Body.Data[:0]
+	for i, m := range datas {
+		mmap := m.(map[string]interface{})
+		userID, _ := util.Interface2Int(mmap["userId"])
+		pid, err := model.AddProjectWithMark(mmap["startDate"].(string), mmap["endDate"].(string), mmap["markReason"].(string), userID, "0", mmap["markNumber"].(string), mmap["markReason"].(string), mmap["username"].(string))
+		if err != nil {
+			buff.WriteString(fmt.Sprintf("第%d行:%s", i+1, err.Error()))
+		}
+		c.Body.Data = append(c.Body.Data, pid)
+	}
+	if buff.Len() > 0 {
+		return fmt.Errorf(buff.String())
+	}
+	c.Body.Params = nil
+	return nil
 }
 
 // AddMark 添加分数

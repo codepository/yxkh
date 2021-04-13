@@ -90,6 +90,16 @@ func UpdatesProject(query interface{}, values interface{}) error {
 	return db.Model(&ResProject{}).Where(query).Updates(values).Error
 }
 
+// FindAllProject 查询所有项目
+func FindAllProject(query interface{}) ([]*ResProject, error) {
+	var datas []*ResProject
+	err := db.Where(query).Find(&datas).Error
+	if err != nil && err == gorm.ErrRecordNotFound {
+		return make([]*ResProject, 0), nil
+	}
+	return datas, err
+}
+
 // FindProjectWithMarks 查询项目和分数
 func FindProjectWithMarks(query interface{}, values ...interface{}) ([]*ResProject, error) {
 	var projects []*ResProject
@@ -176,7 +186,7 @@ func FindSingleProject(query interface{}) (*ResProject, error) {
 
 // AddProjectWithMark 添加项目并评分
 // startDate、endDate、userID 必不可少
-func AddProjectWithMark(startDate, endDate string, projectContent string, userID int, checked, markNumber, markReason, username string) error {
+func AddProjectWithMark(startDate, endDate string, projectContent string, userID int, checked, markNumber, markReason, username string) (int, error) {
 	// 先添加项目，如果已经存在就不添加
 	p := &ResProject{
 		ProjectContent: projectContent,
@@ -187,7 +197,7 @@ func AddProjectWithMark(startDate, endDate string, projectContent string, userID
 	// 查询旧的项目
 	oldPro, err := FindSingleProject(p)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if oldPro == nil { // 不存在，直接添加
 		p.Completed = checked
@@ -214,7 +224,7 @@ func AddProjectWithMark(startDate, endDate string, projectContent string, userID
 	// 查询
 	oldMark, err := FindSingleMark(mark)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if oldMark == nil {
 		mark.Checked = checked
@@ -227,5 +237,5 @@ func AddProjectWithMark(startDate, endDate string, projectContent string, userID
 
 		}
 	}
-	return nil
+	return p.ProjectID, nil
 }
